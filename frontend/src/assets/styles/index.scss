@@ -1,0 +1,107 @@
+@use './variables.scss' as *;
+
+// 全局重置
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', SimSun, sans-serif;
+  color: $text-primary;
+  background-color: $bg-page;
+}
+
+#app {
+  height: 100%;
+}
+
+// 通用工具类
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.full-height {
+  height: 100%;
+}
+
+.full-width {
+  width: 100%;
+}
+
+// 布局相关
+.app-container {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  overflow: auto;
+  padding: $spacing-lg;
+}
+
+// 卡片样式
+.content-card {
+  background: $bg-white;
+  border-radius: $border-radius-base;
+  box-shadow: $box-shadow-base;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-lg;
+}
+
+// 表格工具栏
+.table-toolbar {
+  padding: $spacing-md 0;
+  border-bottom: 1px solid $border-light;
+  margin-bottom: $spacing-md;
+}
+
+// 表单样式
+.form-container {
+  .el-form-item {
+    margin-bottom: $spacing-lg;
+  }
+}
+
+// 响应式
+@media (max-width: 768px) {
+  .main-content {
+    padding: $spacing-md;
+  }
+
+  .content-card {
+    padding: $spacing-md;
+  }
+}
