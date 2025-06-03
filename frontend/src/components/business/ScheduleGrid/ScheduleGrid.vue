@@ -36,7 +36,7 @@
             >
               <div
                 v-for="schedule in getCellSchedules(day.value, period.value)"
-                :key="schedule.id"
+                :key="schedule.schedule_id"
                 class="course-item"
                 :class="getCourseItemClass(schedule)"
                 @click.stop="handleCourseClick(schedule)"
@@ -71,6 +71,18 @@
         <span>选修课</span>
       </div>
       <div class="legend-item">
+        <div class="legend-color public"></div>
+        <span>公共课</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color professional"></div>
+        <span>专业课</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color default"></div>
+        <span>其他</span>
+      </div>
+      <div class="legend-item">
         <div class="legend-color conflict"></div>
         <span>时间冲突</span>
       </div>
@@ -82,7 +94,7 @@
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Printer, Plus } from '@element-plus/icons-vue'
-import type { Schedule } from '@/types/course'
+import type { Schedule } from '@/types/database'
 
 interface Props {
   schedules: Schedule[]
@@ -143,13 +155,17 @@ const conflicts = computed(() => {
 
   props.schedules.forEach(schedule => {
     // 过滤当前周次的课程
-    if (props.selectedWeek && schedule.weeks && !schedule.weeks.includes(props.selectedWeek)) {
+    if (props.selectedWeek && schedule.weeks && !isWeekInRange(schedule.weeks, props.selectedWeek)) {
       return
     }
 
+    // 解析时间范围
+    const startTime = parseTimeToNumber(schedule.start_time)
+    const endTime = parseTimeToNumber(schedule.end_time)
+
     // 检查每个时间段
-    for (let time = schedule.startTime; time <= schedule.endTime; time++) {
-      const key = `${schedule.dayOfWeek}-${time}`
+    for (let time = startTime; time <= endTime; time++) {
+      const key = `${schedule.day_of_week}-${time}`
 
       if (!conflictMap.has(key)) {
         conflictMap.set(key, [])
@@ -174,13 +190,16 @@ const conflicts = computed(() => {
 const getCellSchedules = (dayOfWeek: number, period: number): Schedule[] => {
   return props.schedules.filter(schedule => {
     // 过滤当前周次的课程
-    if (props.selectedWeek && schedule.weeks && !schedule.weeks.includes(props.selectedWeek)) {
+    if (props.selectedWeek && schedule.weeks && !isWeekInRange(schedule.weeks, props.selectedWeek)) {
       return false
     }
 
-    return schedule.dayOfWeek === dayOfWeek &&
-           schedule.startTime <= period &&
-           schedule.endTime >= period
+    const startTime = parseTimeToNumber(schedule.start_time)
+    const endTime = parseTimeToNumber(schedule.end_time)
+
+    return schedule.day_of_week === dayOfWeek &&
+           startTime <= period &&
+           endTime >= period
   })
 }
 
@@ -205,33 +224,21 @@ const getCourseItemClass = (schedule: Schedule): string[] => {
   const classes = []
 
   // 根据课程类型设置样式
-  if (schedule.courseOffering?.course.type) {
-    classes.push(schedule.courseOffering.course.type.toLowerCase())
+  const courseType = schedule.course_offering?.course?.course_type
+  if (courseType) {
+    classes.push(courseType.toLowerCase())
+  } else {
+    // 默认样式，如果没有指定类型
+    classes.push('default')
   }
 
   return classes
 }
 
 // 格式化周次显示
-const formatWeeks = (weeks: number[]): string => {
-  if (!weeks || weeks.length === 0) return ''
-
-  // 连续周次压缩显示
-  const ranges: string[] = []
-  let start = weeks[0]
-  let end = weeks[0]
-
-  for (let i = 1; i < weeks.length; i++) {
-    if (weeks[i] === end + 1) {
-      end = weeks[i]
-    } else {
-      ranges.push(start === end ? `${start}` : `${start}-${end}`)
-      start = end = weeks[i]
-    }
-  }
-
-  ranges.push(start === end ? `${start}` : `${start}-${end}`)
-  return `${ranges.join(',')}周`
+const formatWeeks = (weeks: string): string => {
+  if (!weeks) return ''
+  return `${weeks}周`
 }
 
 // 处理单元格点击
@@ -248,12 +255,12 @@ const handleCourseClick = (schedule: Schedule) => {
 
 // 获取课程名称
 const getCourseName = (schedule: Schedule): string => {
-  return schedule.courseOffering?.course.name || '未知课程'
+  return schedule.course_offering?.course?.course_name || '未知课程'
 }
 
 // 获取教师姓名
 const getTeacherName = (schedule: Schedule): string => {
-  return schedule.courseOffering?.teacher?.user?.realName || '未知教师'
+  return schedule.course_offering?.teacher?.user?.real_name || '未知教师'
 }
 
 // 获取教室名称
@@ -272,6 +279,44 @@ const getClassroomName = (schedule: Schedule): string => {
     }
   }
   return '未安排教室'
+}
+
+// 解析时间字符串为数字（用于时间段计算）
+const parseTimeToNumber = (timeStr: string): number => {
+  // 将时间字符串解析为节次数字
+  // 这里需要根据实际的时间格式调整
+  const timeMap: Record<string, number> = {
+    '08:00': 1, '08:45': 1,
+    '08:55': 2, '09:40': 2,
+    '10:00': 3, '10:45': 3,
+    '10:55': 4, '11:40': 4,
+    '14:00': 5, '14:45': 5,
+    '14:55': 6, '15:40': 6,
+    '16:00': 7, '16:45': 7,
+    '16:55': 8, '17:40': 8,
+    '19:00': 9, '19:45': 9,
+    '19:55': 10, '20:40': 10
+  }
+  return timeMap[timeStr] || 1
+}
+
+// 检查周次是否在范围内
+const isWeekInRange = (weeksStr: string, targetWeek: number): boolean => {
+  // 解析周次字符串，如 "1-16" 或 "1-8,10-16"
+  const ranges = weeksStr.split(',')
+  for (const range of ranges) {
+    if (range.includes('-')) {
+      const [start, end] = range.split('-').map(Number)
+      if (targetWeek >= start && targetWeek <= end) {
+        return true
+      }
+    } else {
+      if (Number(range) === targetWeek) {
+        return true
+      }
+    }
+  }
+  return false
 }
 
 // 打印课程表
@@ -350,6 +395,7 @@ const handlePrint = () => {
         box-shadow: 0 0 10px rgba(0,0,0,0.1);
         border-radius: 8px;
         overflow: hidden;
+        table-layout: fixed;
       }
 
       .schedule-table th, .schedule-table td {
@@ -357,6 +403,7 @@ const handlePrint = () => {
         padding: 12px 8px;
         text-align: center;
         vertical-align: middle;
+        width: 12.5%;
       }
 
       .schedule-table th {
@@ -369,9 +416,9 @@ const handlePrint = () => {
 
       .time-cell {
         background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf0 100%);
-        min-width: 100px;
         font-weight: 600;
         color: #303133;
+        width: 12.5%;
       }
 
       .time-period {
@@ -390,6 +437,7 @@ const handlePrint = () => {
         min-height: 80px;
         padding: 6px;
         background-color: #fafbfc;
+        width: 12.5%;
       }
 
       /* 确保空白单元格在打印时为空 */
@@ -428,6 +476,17 @@ const handlePrint = () => {
         background: linear-gradient(135deg, #f4f4f5 0%, #e9e9eb 100%);
         border-color: #909399;
         border-left: 4px solid #909399;
+      }
+
+      .course-item.default {
+        background: linear-gradient(135deg, #f0f2f5 0%, #e4e7ed 100%);
+        border-color: #c0c4cc;
+        border-left: 4px solid #c0c4cc;
+      }
+
+      .course-item.conflict {
+        background-color: #fef0f0;
+        border-left: 3px solid #f56c6c;
       }
 
       .course-name {
@@ -501,6 +560,11 @@ const handlePrint = () => {
         border-color: #909399;
       }
 
+      .legend-color.default {
+        background: linear-gradient(135deg, #f0f2f5 0%, #e4e7ed 100%);
+        border-color: #c0c4cc;
+      }
+
       .print-footer {
         margin-top: 30px;
         text-align: center;
@@ -546,6 +610,10 @@ const handlePrint = () => {
             <div class="legend-item">
               <div class="legend-color professional"></div>
               <span>专业课</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color default"></div>
+              <span>其他</span>
             </div>
           </div>
         </div>
@@ -598,11 +666,13 @@ const handlePrint = () => {
   width: 100%;
   border-collapse: collapse;
   min-width: 800px;
+  table-layout: fixed;
 
   th, td {
     border: 1px solid #e4e7ed;
     text-align: center;
     vertical-align: middle;
+    width: 12.5%; /* 7个星期列 + 1个时间列 = 8列，每列12.5% */
   }
 
   th {
@@ -613,11 +683,11 @@ const handlePrint = () => {
   }
 
   .time-header {
-    width: 120px;
+    width: 12.5%;
   }
 
   .day-header {
-    width: calc((100% - 120px) / 7);
+    width: 12.5%;
   }
 }
 
@@ -625,6 +695,7 @@ const handlePrint = () => {
   background-color: #fafbfc;
   padding: 12px 8px;
   min-height: 80px;
+  width: 12.5%;
 
   .time-period {
     font-weight: 600;
@@ -642,6 +713,7 @@ const handlePrint = () => {
   padding: 4px;
   min-height: 80px;
   position: relative;
+  width: 12.5%;
 
   &.editable {
     cursor: pointer;
@@ -687,6 +759,16 @@ const handlePrint = () => {
   &.professional {
     background-color: #f4f4f5;
     border-left: 3px solid #909399;
+  }
+
+  &.default {
+    background-color: #f0f2f5;
+    border-left: 3px solid #c0c4cc;
+  }
+
+  &.conflict {
+    background-color: #fef0f0;
+    border-left: 3px solid #f56c6c;
   }
 
   .course-name {

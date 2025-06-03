@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, type FormInstance } from 'element-plus'
 import BaseModal from '@/components/common/BaseModal/index.vue'
 
@@ -79,11 +79,59 @@ const handleSubmit = async () => {
   if (valid) {
     ElMessage.success('录入成功')
     emit('success')
-    emit('update:modelValue', false)
+    handleCancel()
   }
 }
 
 const handleCancel = () => {
+  // 重置表单数据
+  Object.assign(formData, {
+    regularScore: null,
+    midtermScore: null,
+    finalScore: null
+  })
+  formRef.value?.resetFields()
   emit('update:modelValue', false)
 }
+
+// 填充表单数据
+const fillFormData = (grade: any) => {
+  if (grade) {
+    Object.assign(formData, {
+      regularScore: grade.regularScore || null,
+      midtermScore: grade.midtermScore || null,
+      finalScore: grade.finalScore || null
+    })
+  }
+}
+
+// 监听弹窗显示状态
+watch(
+  () => props.modelValue,
+  (show) => {
+    if (show) {
+      if (props.grade) {
+        fillFormData(props.grade)
+      } else {
+        // 重置表单
+        Object.assign(formData, {
+          regularScore: null,
+          midtermScore: null,
+          finalScore: null
+        })
+        formRef.value?.resetFields()
+      }
+    }
+  }
+)
+
+// 监听grade变化
+watch(
+  () => props.grade,
+  (grade) => {
+    if (grade && props.modelValue) {
+      fillFormData(grade)
+    }
+  }
+)
 </script>

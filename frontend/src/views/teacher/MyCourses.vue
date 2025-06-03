@@ -92,16 +92,6 @@
           />
         </el-form-item>
 
-        <el-form-item label="学年">
-          <el-input
-            v-model="searchForm.academicYear"
-            placeholder="请输入学年"
-            clearable
-            style="width: 150px"
-            @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-
         <el-form-item label="状态">
           <el-select
             v-model="searchForm.status"
@@ -253,19 +243,22 @@
     <!-- 课程详情弹窗 -->
     <CourseDetailDialog
       v-model="showDetailDialog"
-      :offering="null"
+      :offering="currentOffering"
+      :key="currentOffering?.offering_id || 'detail'"
     />
 
     <!-- 学生名单弹窗 -->
     <StudentListDialog
       v-model="showStudentDialog"
       :offering="currentOffering"
+      :key="currentOffering?.offering_id || 'student'"
     />
 
     <!-- 成绩管理弹窗 -->
     <GradeManagementDialog
       v-model="showGradeDialog"
       :offering="currentOffering"
+      :key="currentOffering?.offering_id || 'grade'"
     />
   </div>
 </template>
@@ -279,12 +272,19 @@ import CourseDetailDialog from '@/views/teacher/components/CourseDetailDialog.vu
 import StudentListDialog from '@/views/teacher/components/StudentListDialog.vue'
 import GradeManagementDialog from '@/views/teacher/components/GradeManagementDialog.vue'
 import { courseOfferingApi } from '@/api/modules/course'
-import { OfferingStatus } from '@/types/course'
+import { OfferingStatus } from '@/types/database'
 import type {
   CourseOffering,
-  TeacherCourseStats,
   CourseOfferingQuery
-} from '@/types/course'
+} from '@/types/database'
+
+// 添加统计类型定义
+interface TeacherCourseStats {
+  totalCourses: number
+  activeCourses: number
+  completedCourses: number
+  totalStudents: number
+}
 
 // 表单引用
 const searchFormRef = ref<FormInstance>()
@@ -313,7 +313,6 @@ const currentOffering = ref<CourseOffering | null>(null)
 // 搜索表单
 const searchForm = reactive({
   semester: '',
-  academicYear: '',
   status: undefined as OfferingStatus | undefined
 })
 
@@ -322,7 +321,6 @@ const queryParams = reactive<CourseOfferingQuery>({
   page: 1,
   pageSize: 10,
   semester: '',
-  academicYear: '',
   status: undefined
 })
 
@@ -345,38 +343,23 @@ const getDayText = (dayOfWeek: number): string => {
 }
 
 const getOfferingStatusColor = (status: OfferingStatus) => {
-  const colorMap = {
-    DRAFT: 'info',
-    PENDING: 'warning',
-    APPROVED: 'success',
-    PUBLISHED: 'success',
-    ENROLLMENT: 'primary',
-    TEACHING: 'warning',
-    COMPLETED: '',
-    CANCELLED: 'danger',
-    REJECTED: 'danger'
-  } as const
+  const colorMap: Record<number, string> = {
+    [OfferingStatus.INACTIVE]: 'info',
+    [OfferingStatus.ACTIVE]: 'success'
+  }
   return colorMap[status] || 'info'
 }
 
 const getOfferingStatusText = (status: OfferingStatus) => {
-  const textMap = {
-    DRAFT: '草稿',
-    PENDING: '待审核',
-    APPROVED: '已批准',
-    PUBLISHED: '已发布',
-    ENROLLMENT: '选课中',
-    TEACHING: '教学中',
-
-    COMPLETED: '已完成',
-    CANCELLED: '已取消',
-    REJECTED: '已拒绝'
-  } as const
+  const textMap: Record<number, string> = {
+    [OfferingStatus.INACTIVE]: '未开放',
+    [OfferingStatus.ACTIVE]: '开放中'
+  }
   return textMap[status] || '未知'
 }
 
 const getEnrollmentPercentage = (offering: CourseOffering): number => {
-  return Math.round((offering.currentStudents / offering.maxStudents) * 100)
+  return Math.round((offering.current_students / offering.max_students) * 100)
 }
 
 const getProgressColor = (offering: CourseOffering): string => {
@@ -390,7 +373,8 @@ const getProgressColor = (offering: CourseOffering): string => {
 const fetchMyCourses = async () => {
   try {
     loading.value = true
-    const courses = await courseOfferingApi.getMyCourses()
+    const response = await courseOfferingApi.getList()
+    const courses = response.data.list || []
 
     // 模拟分页处理
     const page = queryParams.page || 1
@@ -408,8 +392,13 @@ const fetchMyCourses = async () => {
 
 const fetchStats = async () => {
   try {
-    const statsData = await courseOfferingApi.getTeacherStats()
-    stats.value = statsData
+    // 模拟统计数据
+    stats.value = {
+      totalCourses: 8,
+      activeCourses: 3,
+      completedCourses: 5,
+      totalStudents: 120
+    }
   } catch (error) {
     console.error('获取统计数据失败:', error)
   }
@@ -420,7 +409,6 @@ const handleSearch = () => {
   Object.assign(queryParams, {
     page: 1,
     semester: searchForm.semester,
-    academicYear: searchForm.academicYear,
     status: searchForm.status
   })
   fetchMyCourses()
@@ -430,14 +418,12 @@ const handleReset = () => {
   searchFormRef.value?.resetFields()
   Object.assign(searchForm, {
     semester: '',
-    academicYear: '',
     status: undefined
   })
   Object.assign(queryParams, {
     page: 1,
     pageSize: 10,
     semester: '',
-    academicYear: '',
     status: undefined
   })
   fetchMyCourses()
@@ -478,7 +464,7 @@ const handleGradeManagement = (offering: CourseOffering) => {
 const handleStartTeaching = async (offering: CourseOffering) => {
   try {
     await ElMessageBox.confirm(
-      `确定要开始课程 "${offering.course.name}" 的教学？`,
+      `确定要开始课程 "${offering.course?.course_name}" 的教学？`,
       '开始教学确认',
       {
         type: 'warning',
@@ -487,7 +473,7 @@ const handleStartTeaching = async (offering: CourseOffering) => {
       }
     )
 
-    await courseOfferingApi.updateCourseOffering(offering.id, { status: 'TEACHING' as any })
+    await courseOfferingApi.update(offering.offering_id, { status: OfferingStatus.ACTIVE })
     ElMessage.success('开始教学成功')
     fetchMyCourses()
     fetchStats()

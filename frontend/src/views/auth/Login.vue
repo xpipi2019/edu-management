@@ -54,21 +54,7 @@
         </el-form-item>
       </el-form>
 
-      <div class="login-footer">
-        <div class="demo-accounts">
-          <h4>演示账号（密码都是：123456）：</h4>
-          <div class="account-list">
-            <div
-              v-for="account in demoAccounts"
-              :key="account.username"
-              class="account-item"
-              @click="fillAccount(account.username)"
-            >
-              <strong>{{ account.label }}</strong>: {{ account.username }}
-            </div>
-          </div>
-        </div>
-      </div>
+
     </div>
   </div>
 </template>
@@ -77,7 +63,7 @@
 import { reactive, ref, computed } from 'vue'
 import { ElForm, ElMessage } from 'element-plus'
 import { useAuth } from '@/composables/useAuth'
-import type { LoginForm } from '@/types/user'
+import type { LoginForm } from '@/types/database'
 import type { FormRules } from 'element-plus'
 
 const { login, loading } = useAuth()

@@ -1,22 +1,29 @@
-import { request } from '@/utils/request'
-import { API_ENDPOINTS } from '@/constants/api'
-import type { Permission } from '@/types/user'
-import type { PageResponse } from '@/types/common'
+import request from '../../utils/request'
+import type { ApiResponse } from '../../types/common'
+import type { Permission } from '../../types/database'
+import { API_ENDPOINTS } from '../../constants/api'
 
-// 权限相关API
+// 权限管理API
 export const permissionApi = {
   // 获取权限列表
-  getPermissions: (params?: { module?: string }): Promise<PageResponse<Permission>> => {
-    return request.get(API_ENDPOINTS.PERMISSIONS.LIST, { params })
+  getList: (): Promise<ApiResponse<Permission[]>> => {
+    return request.get(API_ENDPOINTS.PERMISSIONS.LIST)
   },
 
-  // 获取所有权限（不分页）
-  getAllPermissions: (): Promise<Permission[]> => {
+  // 获取所有权限
+  getAll: (): Promise<ApiResponse<Permission[]>> => {
     return request.get(API_ENDPOINTS.PERMISSIONS.ALL)
   },
 
-  // 按模块分组获取权限
-  getPermissionsByModule: (): Promise<Record<string, Permission[]>> => {
+  // 按模块获取权限
+  getByModule: (): Promise<ApiResponse<Record<string, Permission[]>>> => {
     return request.get(API_ENDPOINTS.PERMISSIONS.BY_MODULE)
+  },
+
+  // 获取权限模块列表
+  getModules: (): Promise<ApiResponse<string[]>> => {
+    return request.get(API_ENDPOINTS.PERMISSIONS.MODULES)
   }
 }
+
+export default permissionApi

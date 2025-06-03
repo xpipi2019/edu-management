@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/modules/auth'
-import type { LoginForm } from '@/types/user'
+import type { LoginForm } from '@/types/database'
 
 export const useAuth = () => {
   const router = useRouter()
@@ -15,16 +15,23 @@ export const useAuth = () => {
     loading.value = true
     try {
       const response = await authApi.login(loginForm)
-      authStore.setAuth(response)
-      ElMessage.success('登录成功')
 
-      // 跳转到首页或之前访问的页面
-      const redirect = router.currentRoute.value.query.redirect as string
-      await router.push(redirect || '/')
+      // 检查响应是否成功
+      if (response.code === 0 && response.data) {
+        authStore.setAuth(response.data)
+        ElMessage.success('登录成功')
 
-      return response
+        // 跳转到首页或之前访问的页面
+        const redirect = router.currentRoute.value.query.redirect as string
+        await router.push(redirect || '/')
+
+        return response.data
+      } else {
+        throw new Error(response.message || '登录失败')
+      }
     } catch (error) {
       console.error('登录失败:', error)
+      ElMessage.error(error instanceof Error ? error.message : '登录失败')
       throw error
     } finally {
       loading.value = false
@@ -47,9 +54,14 @@ export const useAuth = () => {
   // 获取用户信息
   const getUserInfo = async () => {
     try {
-      const user = await authApi.getProfile()
-      authStore.updateUser(user)
-      return user
+      const response = await authApi.getProfile()
+
+      if (response.code === 0 && response.data) {
+        authStore.updateUser(response.data)
+        return response.data
+      } else {
+        throw new Error(response.message || '获取用户信息失败')
+      }
     } catch (error) {
       console.error('获取用户信息失败:', error)
       throw error

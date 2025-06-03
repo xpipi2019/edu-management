@@ -49,22 +49,22 @@
         v-loading="loading"
         :data="filteredDepartments"
         style="width: 100%"
-        row-key="id"
+        row-key="dept_id"
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         default-expand-all
       >
         <el-table-column type="index" label="序号" width="70" align="center" />
 
-        <el-table-column prop="name" label="部门名称" min-width="250">
+        <el-table-column prop="dept_name" label="部门名称" min-width="250">
           <template #default="{ row }">
             <div class="department-name">
               <el-icon class="department-icon"><OfficeBuilding /></el-icon>
-              <span>{{ row.name }}</span>
+              <span>{{ row.dept_name }}</span>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="code" label="部门代码" width="150" />
+        <el-table-column prop="dept_code" label="部门代码" width="150" />
 
         <el-table-column prop="description" label="部门描述" min-width="200">
           <template #default="{ row }">
@@ -72,9 +72,9 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="createdAt" label="创建时间" width="180">
+        <el-table-column prop="created_at" label="创建时间" width="180">
           <template #default="{ row }">
-            {{ formatDateTime(row.createdAt) }}
+            {{ formatDateTime(row.created_at) }}
           </template>
         </el-table-column>
 
@@ -129,9 +129,9 @@
           <el-tree-select
             v-model="departmentForm.parentId"
             :data="departmentTreeOptions"
-            :props="{ label: 'name', value: 'id' }"
+            :props="{ label: 'dept_name', value: 'dept_id' }"
             placeholder="请选择上级部门"
-            node-key="id"
+            node-key="dept_id"
             check-strictly
             clearable
             style="width: 100%"
@@ -191,7 +191,7 @@ import {
   OfficeBuilding
 } from '@element-plus/icons-vue'
 import { departmentApi } from '@/api/modules/department'
-import type { Department, CreateDepartmentData, UpdateDepartmentData } from '@/types/user'
+import type { Department, CreateDepartmentData, UpdateDepartmentData } from '@/types/database'
 import { formatDateTime } from '@/utils/common'
 
 // 表单引用
@@ -213,7 +213,12 @@ const isAddChild = ref(false)
 const currentDepartment = ref<Department | null>(null)
 const parentDepartment = ref<Department | null>(null)
 
-const departmentForm = reactive<CreateDepartmentData>({
+const departmentForm = reactive<{
+  name: string;
+  code: string;
+  parentId?: number;
+  description: string
+}>({
   name: '',
   code: '',
   parentId: undefined,
@@ -236,7 +241,7 @@ const departmentFormRules = {
 // 计算属性
 const dialogTitle = computed(() => {
   if (isAddChild.value && parentDepartment.value) {
-    return `为"${parentDepartment.value.name}"添加子部门`
+    return `为"${parentDepartment.value.dept_name}"添加子部门`
   }
   return isEdit.value ? '编辑部门' : '新增部门'
 })
@@ -249,15 +254,15 @@ const filteredDepartments = computed(() => {
 })
 
 const departmentTreeOptions = computed(() => {
-  return buildTreeOptions(departmentTree.value, currentDepartment.value?.id)
+  return buildTreeOptions(departmentTree.value, currentDepartment.value?.dept_id)
 })
 
 // 方法
 const fetchDepartments = async () => {
   loading.value = true
   try {
-    const response = await departmentApi.getDepartmentTree()
-    departmentTree.value = response
+    const response = await departmentApi.getAll()
+    departmentTree.value = response.data
   } catch (error) {
     ElMessage.error('获取部门列表失败')
     console.error('Failed to fetch departments:', error)
@@ -270,7 +275,7 @@ const filterTree = (tree: Department[], keyword: string): Department[] => {
   const result: Department[] = []
 
   for (const node of tree) {
-    if (node.name.toLowerCase().includes(keyword.toLowerCase())) {
+    if (node.dept_name.toLowerCase().includes(keyword.toLowerCase())) {
       // 如果当前节点匹配，包含所有子节点
       result.push({ ...node })
     } else if (node.children && node.children.length > 0) {
@@ -292,7 +297,7 @@ const buildTreeOptions = (tree: Department[], excludeId?: number): Department[] 
   const result: Department[] = []
 
   for (const node of tree) {
-    if (node.id === excludeId) {
+    if (node.dept_id === excludeId) {
       // 排除当前编辑的部门（避免选择自己作为父级）
       continue
     }
@@ -317,44 +322,31 @@ const handleSearch = () => {
   })
 }
 
+const getAllKeys = (data: Department[]): number[] => {
+  let keys: number[] = []
+  data.forEach(item => {
+    keys.push(item.dept_id)
+    if (item.children && item.children.length > 0) {
+      keys = keys.concat(getAllKeys(item.children))
+    }
+  })
+  return keys
+}
+
 const expandAll = () => {
   if (tableRef.value) {
-    // 获取所有节点的key，然后展开
-    const getAllKeys = (data: Department[]): number[] => {
-      let keys: number[] = []
-      data.forEach(item => {
-        keys.push(item.id)
-        if (item.children && item.children.length > 0) {
-          keys = keys.concat(getAllKeys(item.children))
-        }
-      })
-      return keys
-    }
-
     const keys = getAllKeys(departmentTree.value)
     keys.forEach(key => {
-      tableRef.value.toggleRowExpansion({ id: key }, true)
+      tableRef.value.toggleRowExpansion({ dept_id: key }, true)
     })
   }
 }
 
 const collapseAll = () => {
   if (tableRef.value) {
-    // 收起所有节点
-    const getAllKeys = (data: Department[]): number[] => {
-      let keys: number[] = []
-      data.forEach(item => {
-        keys.push(item.id)
-        if (item.children && item.children.length > 0) {
-          keys = keys.concat(getAllKeys(item.children))
-        }
-      })
-      return keys
-    }
-
     const keys = getAllKeys(departmentTree.value)
     keys.forEach(key => {
-      tableRef.value.toggleRowExpansion({ id: key }, false)
+      tableRef.value.toggleRowExpansion({ dept_id: key }, false)
     })
   }
 }
@@ -381,7 +373,7 @@ const handleAddChild = (department: Department) => {
   Object.assign(departmentForm, {
     name: '',
     code: '',
-    parentId: department.id,
+    parentId: department.dept_id,
     description: ''
   })
   showDepartmentForm.value = true
@@ -393,9 +385,9 @@ const handleEdit = (department: Department) => {
   currentDepartment.value = department
   parentDepartment.value = null
   Object.assign(departmentForm, {
-    name: department.name,
-    code: department.code,
-    parentId: department.parentId,
+    name: department.dept_name,
+    code: department.dept_code,
+    parentId: department.parent_id,
     description: department.description || ''
   })
   showDepartmentForm.value = true
@@ -404,7 +396,7 @@ const handleEdit = (department: Department) => {
 const handleDelete = async (department: Department) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除部门"${department.name}"吗？`,
+      `确定要删除部门"${department.dept_name}"吗？`,
       '确认删除',
       {
         confirmButtonText: '确定',
@@ -413,7 +405,7 @@ const handleDelete = async (department: Department) => {
       }
     )
 
-    await departmentApi.deleteDepartment(department.id)
+    await departmentApi.delete(department.dept_id)
     ElMessage.success('删除成功')
     fetchDepartments()
   } catch (error: any) {
@@ -433,14 +425,20 @@ const handleFormSubmit = async () => {
 
     if (isEdit.value && currentDepartment.value) {
       const updateData: UpdateDepartmentData = {
-        name: departmentForm.name,
-        parentId: departmentForm.parentId,
+        dept_name: departmentForm.name,
+        parent_id: departmentForm.parentId,
         description: departmentForm.description
       }
-      await departmentApi.updateDepartment(currentDepartment.value.id, updateData)
+      await departmentApi.update(currentDepartment.value.dept_id, updateData)
       ElMessage.success('更新成功')
     } else {
-      await departmentApi.createDepartment(departmentForm)
+      const createData: CreateDepartmentData = {
+        dept_name: departmentForm.name,
+        dept_code: departmentForm.code,
+        parent_id: departmentForm.parentId,
+        description: departmentForm.description
+      }
+      await departmentApi.create(createData)
       ElMessage.success('创建成功')
     }
 

@@ -28,10 +28,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, type FormInstance } from 'element-plus'
 import BaseModal from '@/components/common/BaseModal/index.vue'
-import type { CourseOffering } from '@/types/course'
+import type { CourseOffering } from '@/types/database'
 
 interface Props {
   modelValue: boolean
@@ -72,11 +72,34 @@ const handleSubmit = async () => {
   if (valid) {
     ElMessage.success('批量录入成功')
     emit('success')
-    emit('update:modelValue', false)
+    handleCancel()
   }
 }
 
 const handleCancel = () => {
+  // 重置表单数据
+  Object.assign(formData, {
+    regularScore: null,
+    midtermScore: null,
+    finalScore: null
+  })
+  formRef.value?.resetFields()
   emit('update:modelValue', false)
 }
+
+// 监听弹窗显示状态
+watch(
+  () => props.modelValue,
+  (show) => {
+    if (show) {
+      // 弹窗显示时重置表单
+      Object.assign(formData, {
+        regularScore: null,
+        midtermScore: null,
+        finalScore: null
+      })
+      formRef.value?.resetFields()
+    }
+  }
+)
 </script>

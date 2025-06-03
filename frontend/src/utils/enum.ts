@@ -1,5 +1,4 @@
-import { UserStatus } from '@/types/user'
-import { CourseType, CourseStatus } from '@/types/course'
+import { UserStatus, CourseType, CourseStatus, OfferingStatus, EnrollmentStatus } from '@/types/database'
 
 /**
  * 枚举映射基础接口
@@ -39,29 +38,32 @@ export const userStatusMapper = createEnumMapper({
 export const courseTypeMapper = createEnumMapper({
   [CourseType.REQUIRED]: { text: '必修课', color: '#f56c6c', type: 'danger' },
   [CourseType.ELECTIVE]: { text: '选修课', color: '#409eff', type: 'primary' },
-  [CourseType.PUBLIC]: { text: '公共课', color: '#67c23a', type: 'success' },
-  [CourseType.PROFESSIONAL]: { text: '专业课', color: '#e6a23c', type: 'warning' }
+  [CourseType.PUBLIC_ELECTIVE]: { text: '公选课', color: '#67c23a', type: 'success' }
 })
 
 /**
  * 课程状态映射
  */
 export const courseStatusMapper = createEnumMapper({
-  [CourseStatus.DRAFT]: { text: '草稿', color: '#909399', type: 'info' },
-  [CourseStatus.PUBLISHED]: { text: '已发布', color: '#67c23a', type: 'success' },
-  [CourseStatus.ARCHIVED]: { text: '已归档', color: '#e6a23c', type: 'warning' }
+  [CourseStatus.INACTIVE]: { text: '禁用', color: '#909399', type: 'info' },
+  [CourseStatus.ACTIVE]: { text: '启用', color: '#67c23a', type: 'success' }
 })
 
 /**
- * 课程开课状态映射（如果有的话）
+ * 开课状态映射
  */
 export const offeringStatusMapper = createEnumMapper({
-  DRAFT: { text: '草稿', color: '#909399', type: 'info' },
-  PUBLISHED: { text: '已发布', color: '#67c23a', type: 'success' },
-  ENROLLMENT: { text: '选课中', color: '#409eff', type: 'primary' },
-  TEACHING: { text: '教学中', color: '#e6a23c', type: 'warning' },
-  COMPLETED: { text: '已完成', color: '#67c23a', type: '' },
-  CANCELLED: { text: '已取消', color: '#f56c6c', type: 'danger' }
+  [OfferingStatus.INACTIVE]: { text: '禁用', color: '#909399', type: 'info' },
+  [OfferingStatus.ACTIVE]: { text: '启用', color: '#67c23a', type: 'success' }
+})
+
+/**
+ * 选课状态映射
+ */
+export const enrollmentStatusMapper = createEnumMapper({
+  [EnrollmentStatus.WITHDRAWN]: { text: '已退课', color: '#909399', type: 'info' },
+  [EnrollmentStatus.ENROLLED]: { text: '已选课', color: '#67c23a', type: 'success' },
+  [EnrollmentStatus.PENDING]: { text: '待审核', color: '#e6a23c', type: 'warning' }
 })
 
 /**

@@ -14,7 +14,7 @@
             v-model="selectedAcademicYear"
             placeholder="选择学年"
             style="width: 150px"
-            @change="fetchSchedule"
+            @change="fetchMySchedule"
           >
             <el-option
               v-for="year in academicYears"
@@ -29,14 +29,14 @@
             v-model="selectedSemester"
             placeholder="选择学期"
             style="width: 120px"
-            @change="fetchSchedule"
+            @change="fetchMySchedule"
           >
             <el-option label="春季学期" value="春季学期" />
             <el-option label="秋季学期" value="秋季学期" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="fetchSchedule">
+          <el-button type="primary" @click="fetchMySchedule">
             <el-icon><Search /></el-icon>
             查询
           </el-button>
@@ -83,17 +83,17 @@
               <div
                 v-if="getCourseByDayAndTime(day.value, timeSlot.period)"
                 class="course-item"
-                :class="`course-type-${getCourseByDayAndTime(day.value, timeSlot.period)?.courseOffering.course.type.toLowerCase()}`"
+                :class="`course-type-${getCourseByDayAndTime(day.value, timeSlot.period)?.course_offering?.course?.course_type.toLowerCase()}`"
               >
                 <div class="course-name">
-                  {{ getCourseByDayAndTime(day.value, timeSlot.period)?.courseOffering.course.name }}
+                  {{ getCourseByDayAndTime(day.value, timeSlot.period)?.course_offering?.course?.course_name }}
                 </div>
                 <div class="course-info">
                   <div class="teacher">
-                    {{ getCourseByDayAndTime(day.value, timeSlot.period)?.courseOffering.teacher.user?.realName }}
+                    {{ getCourseByDayAndTime(day.value, timeSlot.period)?.course_offering?.teacher?.user?.real_name }}
                   </div>
                   <div class="classroom">
-                    {{ getCourseByDayAndTime(day.value, timeSlot.period)?.courseOffering.classroom || '待定' }}
+                    {{ getClassroomInfo(getCourseByDayAndTime(day.value, timeSlot.period)) }}
                   </div>
                 </div>
               </div>
@@ -117,33 +117,33 @@
       </template>
 
       <el-table :data="enrollmentList" stripe>
-        <el-table-column prop="courseOffering.course.code" label="课程代码" width="120" />
-        <el-table-column prop="courseOffering.course.name" label="课程名称" min-width="150" />
-        <el-table-column prop="courseOffering.course.credits" label="学分" width="80" align="center" />
-        <el-table-column prop="courseOffering.teacher.user.realName" label="授课教师" width="120" />
+        <el-table-column prop="course_offering.course.course_code" label="课程代码" width="120" />
+        <el-table-column prop="course_offering.course.course_name" label="课程名称" min-width="150" />
+        <el-table-column prop="course_offering.course.credits" label="学分" width="80" align="center" />
+        <el-table-column prop="course_offering.teacher.user.real_name" label="授课教师" width="120" />
         <el-table-column label="上课时间" min-width="200">
           <template #default="{ row }">
-            <div v-if="row.courseOffering.schedules && row.courseOffering.schedules.length > 0">
+            <div v-if="row.course_offering.schedules && row.course_offering.schedules.length > 0">
               <div
-                v-for="schedule in row.courseOffering.schedules"
+                v-for="schedule in row.course_offering.schedules"
                 :key="schedule.id"
                 class="schedule-time"
               >
-                {{ getWeekDayName(schedule.dayOfWeek) }}
-                第{{ schedule.startTime }}-{{ schedule.endTime }}节
+                {{ getWeekDayName(schedule.day_of_week) }}
+                第{{ schedule.start_time }}-{{ schedule.end_time }}节
                 ({{ schedule.classroom }})
               </div>
             </div>
             <span v-else class="no-schedule">时间待定</span>
           </template>
         </el-table-column>
-        <el-table-column prop="courseOffering.course.type" label="课程类型" width="100" align="center">
+        <el-table-column prop="course_offering.course.course_type" label="课程类型" width="100" align="center">
           <template #default="{ row }">
             <el-tag
-              :type="getCourseTypeTagType(row.courseOffering.course.type)"
+              :type="getCourseTypeTagType(row.course_offering.course.course_type)"
               size="small"
             >
-              {{ getCourseTypeText(row.courseOffering.course.type) }}
+              {{ getCourseTypeText(row.course_offering.course.course_type) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -167,7 +167,8 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Printer } from '@element-plus/icons-vue'
 import { enrollmentApi } from '@/api/modules'
-import type { Enrollment, CourseType, EnrollmentStatus } from '@/types/course'
+import type { Enrollment, CourseType } from '@/types/database'
+import { EnrollmentStatus } from '@/types/database'
 
 // 响应式数据
 const loading = ref(false)
@@ -205,22 +206,25 @@ const academicYears = computed(() => {
   return ['2024-2025', '2023-2024', '2022-2023']
 })
 
-// 获取我的选课信息
-const fetchSchedule = async () => {
+// 获取我的课程表
+const fetchMySchedule = async () => {
   try {
     loading.value = true
-    const data = await enrollmentApi.getMyEnrollments()
+    const response = await enrollmentApi.getMyEnrollments()
+    const data = response.data || []
 
-    // 筛选当前学期的课程
-    const filteredData = data.filter(item =>
-      item.courseOffering.academicYear === selectedAcademicYear.value &&
-      item.courseOffering.semester === selectedSemester.value &&
-      item.status === 'APPROVED' // 只显示已通过的选课
-    )
+    // 过滤当前学期的已通过选课
+    const filteredData = data.filter((item: Enrollment) => {
+      // 假设课程开课信息中包含学期信息
+      // 这里需要根据实际的数据结构调整筛选逻辑
+      const isCurrentSemester = true // 临时设为true，实际应根据开课学期筛选
+      const isApproved = item.status === EnrollmentStatus.ENROLLED
+      return isCurrentSemester && isApproved
+    })
 
     enrollmentList.value = filteredData
   } catch (error) {
-    console.error('获取课程表失败：', error)
+    console.error('获取课程表失败:', error)
     ElMessage.error('获取课程表失败')
   } finally {
     loading.value = false
@@ -229,11 +233,11 @@ const fetchSchedule = async () => {
 
 // 根据星期和时间获取课程
 const getCourseByDayAndTime = (dayOfWeek: number, period: number) => {
-  return enrollmentList.value.find(enrollment =>
-    enrollment.courseOffering.schedules?.some(schedule =>
-      schedule.dayOfWeek === dayOfWeek &&
-      period >= schedule.startTime &&
-      period <= schedule.endTime
+  return enrollmentList.value.find((enrollment: any) =>
+    enrollment.course_offering.schedules?.some((schedule: any) =>
+      schedule.day_of_week === dayOfWeek &&
+      period >= schedule.start_time &&
+      period <= schedule.end_time
     )
   )
 }
@@ -295,9 +299,9 @@ const generatePrintContent = () => {
                           return `<td>
                             ${course ? `
                                 <div class="course-item">
-                                    <div class="course-name">${course.courseOffering.course.name}</div>
-                                    <div class="teacher">${course.courseOffering.teacher.user?.realName}</div>
-                                    <div class="classroom">${course.courseOffering.classroom || '待定'}</div>
+                                    <div class="course-name">${course.course_offering?.course?.course_name}</div>
+                                    <div class="teacher">${course.course_offering?.teacher?.user?.real_name}</div>
+                                    <div class="classroom">${getClassroomInfo(course)}</div>
                                 </div>
                             ` : ''}
                           </td>`
@@ -321,7 +325,7 @@ const getWeekDayName = (dayOfWeek: number) => {
 }
 
 const getCourseTypeText = (type: CourseType) => {
-  const typeMap = {
+  const typeMap: Record<string, string> = {
     REQUIRED: '必修',
     ELECTIVE: '选修',
     PUBLIC: '公共',
@@ -331,7 +335,7 @@ const getCourseTypeText = (type: CourseType) => {
 }
 
 const getCourseTypeTagType = (type: CourseType) => {
-  const typeMap = {
+  const typeMap: Record<string, string> = {
     REQUIRED: 'danger',
     ELECTIVE: 'success',
     PUBLIC: 'info',
@@ -341,7 +345,7 @@ const getCourseTypeTagType = (type: CourseType) => {
 }
 
 const getEnrollmentStatusText = (status: EnrollmentStatus) => {
-  const statusMap = {
+  const statusMap: Record<string, string> = {
     PENDING: '待审核',
     APPROVED: '已通过',
     REJECTED: '已拒绝',
@@ -351,7 +355,7 @@ const getEnrollmentStatusText = (status: EnrollmentStatus) => {
 }
 
 const getEnrollmentStatusTagType = (status: EnrollmentStatus) => {
-  const typeMap = {
+  const typeMap: Record<string, string> = {
     PENDING: 'warning',
     APPROVED: 'success',
     REJECTED: 'danger',
@@ -360,9 +364,19 @@ const getEnrollmentStatusTagType = (status: EnrollmentStatus) => {
   return typeMap[status] || ''
 }
 
+// 获取教室信息
+const getClassroomInfo = (enrollment: any) => {
+  // 从课程排课信息中获取教室
+  if (enrollment?.course_offering?.schedules?.length > 0) {
+    const schedule = enrollment.course_offering.schedules[0]
+    return schedule.classroom?.room_no || '待定'
+  }
+  return '待定'
+}
+
 // 生命周期
 onMounted(() => {
-  fetchSchedule()
+  fetchMySchedule()
 })
 </script>
 

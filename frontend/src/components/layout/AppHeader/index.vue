@@ -22,7 +22,7 @@
           <el-avatar :size="32" :src="userAvatar">
             {{ userInitial }}
           </el-avatar>
-          <span class="username">{{ authStore.user?.realName || '用户' }}</span>
+          <span class="username">{{ authStore.user?.real_name || '用户' }}</span>
           <el-icon><ArrowDown /></el-icon>
         </span>
         <template #dropdown>
@@ -51,12 +51,12 @@ const authStore = useAuthStore()
 const appStore = useAppStore()
 const { logout } = useAuth()
 
-// 用户头像
-const userAvatar = computed(() => authStore.user?.avatar)
+// 用户头像 - 新的数据库schema中没有avatar字段，使用默认头像
+const userAvatar = computed(() => undefined)
 
 // 用户名首字母
 const userInitial = computed(() => {
-  const name = authStore.user?.realName || authStore.user?.username || 'U'
+  const name = authStore.user?.real_name || authStore.user?.username || 'U'
   return name.charAt(0).toUpperCase()
 })
 

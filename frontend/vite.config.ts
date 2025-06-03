@@ -10,11 +10,10 @@ export default defineConfig({
   plugins: [
     vue(),
     vueJsx(),
-    vueDevTools(),
+    // vueDevTools(),
     viteMockServe({
       mockPath: 'src/mock',
       enable: true,
-      watchFiles: true,
       logger: true,
       configPath: 'src/mock/index.ts'
     })

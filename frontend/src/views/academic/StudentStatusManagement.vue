@@ -6,7 +6,7 @@
       <div class="header-actions">
         <el-button type="primary" @click="showCreateDialog">
           <el-icon><Plus /></el-icon>
-          新增状态变更
+          新增学籍状态
         </el-button>
       </div>
     </div>
@@ -16,28 +16,28 @@
       <el-form :model="queryForm" inline class="search-form">
         <el-form-item label="学生学号">
           <el-input
-            v-model="queryForm.studentId"
+            v-model="queryForm.student_id"
             placeholder="请输入学生学号"
             clearable
             style="width: 200px"
           />
         </el-form-item>
-        <el-form-item label="变更类型">
+        <el-form-item label="状态类型">
           <el-select
-            v-model="queryForm.changeType"
-            placeholder="请选择变更类型"
+            v-model="queryForm.status_type"
+            placeholder="请选择状态类型"
             clearable
             style="width: 150px"
           >
             <el-option
-              v-for="(label, value) in statusChangeTypeOptions"
+              v-for="(label, value) in statusTypeOptions"
               :key="value"
               :label="label"
               :value="value"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="变更日期">
+        <el-form-item label="生效日期">
           <el-date-picker
             v-model="dateRange"
             type="daterange"
@@ -60,34 +60,40 @@
       </el-form>
     </el-card>
 
-    <!-- 状态变更列表 -->
+    <!-- 学籍状态列表 -->
     <el-card>
       <el-table
         v-loading="loading"
-        :data="statusChangeList"
+        :data="statusList"
         stripe
         style="width: 100%"
       >
-        <el-table-column prop="student.studentId" label="学号" width="120" />
-        <el-table-column prop="student.user.realName" label="姓名" width="100" />
-        <el-table-column prop="changeType" label="变更类型" width="120">
+        <el-table-column prop="student.student_no" label="学号" width="120" />
+        <el-table-column prop="student.user.real_name" label="姓名" width="100" />
+        <el-table-column prop="status_type" label="状态类型" width="120">
           <template #default="{ row }">
-            <el-tag :type="getChangeTypeTagType(row.changeType as StudentStatusChangeType)">
-              {{ statusChangeTypeOptions[row.changeType as StudentStatusChangeType] }}
+            <el-tag :type="getStatusTypeTagType(row.status_type as StudentStatusType)">
+              {{ row.status_type }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="fromStatus" label="原状态" width="100" />
-        <el-table-column prop="toStatus" label="新状态" width="100" />
-        <el-table-column prop="reason" label="变更原因" show-overflow-tooltip />
-        <el-table-column prop="effectiveDate" label="生效日期" width="120" />
-        <el-table-column label="审批状态" width="100">
+        <el-table-column prop="effective_date" label="生效日期" width="120" />
+        <el-table-column prop="end_date" label="结束日期" width="120">
           <template #default="{ row }">
-            <el-tag v-if="row.approvedAt" type="success">已审批</el-tag>
-            <el-tag v-else type="warning">待审批</el-tag>
+            {{ row.end_date || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="approver.realName" label="审批人" width="100" />
+        <el-table-column prop="reason" label="原因" show-overflow-tooltip />
+        <el-table-column prop="handler.real_name" label="处理人" width="100">
+          <template #default="{ row }">
+            {{ row.handler?.real_name || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="created_at" label="创建时间" width="160">
+          <template #default="{ row }">
+            {{ formatDateTime(row.created_at) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button
@@ -98,15 +104,6 @@
               查看
             </el-button>
             <el-button
-              v-if="!row.approvedAt"
-              type="success"
-              size="small"
-              @click="handleApprove(row)"
-            >
-              审批
-            </el-button>
-            <el-button
-              v-if="!row.approvedAt"
               type="primary"
               size="small"
               @click="handleEdit(row)"
@@ -115,11 +112,10 @@
             </el-button>
             <el-popconfirm
               title="确定删除此记录吗？"
-              @confirm="handleDelete(row.id)"
+              @confirm="handleDelete(row.status_id)"
             >
               <template #reference>
                 <el-button
-                  v-if="!row.approvedAt"
                   type="danger"
                   size="small"
                 >
@@ -148,7 +144,7 @@
     <!-- 新增/编辑对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="editingItem ? '编辑状态变更' : '新增状态变更'"
+      :title="editingItem ? '编辑学籍状态' : '新增学籍状态'"
       width="600px"
       @closed="resetForm"
     >
@@ -158,62 +154,45 @@
         :rules="formRules"
         label-width="120px"
       >
-        <el-form-item label="学生" prop="studentId">
-          <el-select
-            v-model="formData.studentId"
-            placeholder="请选择学生"
-            filterable
-            remote
-            :remote-method="searchStudents"
-            :loading="studentLoading"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="student in studentOptions"
-              :key="student.id"
-              :label="`${student.studentId} - ${student.user.realName}`"
-              :value="student.id"
-            />
-          </el-select>
+        <el-form-item label="学生" prop="student_id">
+          <UserSelector
+            v-model="formData.student_id"
+            user-type="student"
+            @change="handleStudentChange"
+          />
         </el-form-item>
-        <el-form-item label="变更类型" prop="changeType">
-          <el-select v-model="formData.changeType" style="width: 100%">
+        <el-form-item label="状态类型" prop="status_type">
+          <el-select v-model="formData.status_type" style="width: 100%">
             <el-option
-              v-for="(label, value) in statusChangeTypeOptions"
+              v-for="(label, value) in statusTypeOptions"
               :key="value"
               :label="label"
               :value="value"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="原状态" prop="fromStatus">
-          <el-input v-model="formData.fromStatus" placeholder="请输入原状态" />
-        </el-form-item>
-        <el-form-item label="新状态" prop="toStatus">
-          <el-input v-model="formData.toStatus" placeholder="请输入新状态" />
-        </el-form-item>
-        <el-form-item label="变更原因" prop="reason">
-          <el-input
-            v-model="formData.reason"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入变更原因"
-          />
-        </el-form-item>
-        <el-form-item label="生效日期" prop="effectiveDate">
+        <el-form-item label="生效日期" prop="effective_date">
           <el-date-picker
-            v-model="formData.effectiveDate"
+            v-model="formData.effective_date"
             type="date"
             placeholder="请选择生效日期"
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="备注">
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="formData.end_date"
+            type="date"
+            placeholder="请选择结束日期（可选）"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="原因">
           <el-input
-            v-model="formData.remarks"
+            v-model="formData.reason"
             type="textarea"
-            :rows="2"
-            placeholder="请输入备注"
+            :rows="3"
+            placeholder="请输入原因"
           />
         </el-form-item>
       </el-form>
@@ -225,83 +204,36 @@
       </template>
     </el-dialog>
 
-    <!-- 审批对话框 -->
-    <el-dialog
-      v-model="approveDialogVisible"
-      title="审批状态变更"
-      width="500px"
-    >
-      <el-form
-        ref="approveFormRef"
-        :model="approveForm"
-        label-width="100px"
-      >
-        <el-form-item label="审批结果" prop="approved">
-          <el-radio-group v-model="approveForm.approved">
-            <el-radio :label="true">通过</el-radio>
-            <el-radio :label="false">拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="审批意见">
-          <el-input
-            v-model="approveForm.remarks"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入审批意见"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="approveDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleApproveSubmit" :loading="approving">
-          提交审批
-        </el-button>
-      </template>
-    </el-dialog>
-
     <!-- 详情对话框 -->
     <el-dialog
       v-model="detailDialogVisible"
-      title="状态变更详情"
+      title="学籍状态详情"
       width="600px"
     >
       <el-descriptions v-if="currentItem" :column="2" border>
         <el-descriptions-item label="学号">
-          {{ currentItem.student?.studentId }}
+          {{ currentItem.student?.student_no }}
         </el-descriptions-item>
         <el-descriptions-item label="姓名">
-          {{ currentItem.student?.user?.realName }}
+          {{ currentItem.student?.user?.real_name }}
         </el-descriptions-item>
-        <el-descriptions-item label="变更类型">
-          {{ statusChangeTypeOptions[currentItem.changeType] }}
-        </el-descriptions-item>
-        <el-descriptions-item label="原状态">
-          {{ currentItem.fromStatus }}
-        </el-descriptions-item>
-        <el-descriptions-item label="新状态">
-          {{ currentItem.toStatus }}
+        <el-descriptions-item label="状态类型">
+          {{ currentItem.status_type }}
         </el-descriptions-item>
         <el-descriptions-item label="生效日期">
-          {{ currentItem.effectiveDate }}
+          {{ currentItem.effective_date }}
         </el-descriptions-item>
-        <el-descriptions-item label="变更原因" :span="2">
-          {{ currentItem.reason }}
+        <el-descriptions-item label="结束日期">
+          {{ currentItem.end_date || '-' }}
         </el-descriptions-item>
-        <el-descriptions-item label="审批状态">
-          <el-tag v-if="currentItem.approvedAt" type="success">已审批</el-tag>
-          <el-tag v-else type="warning">待审批</el-tag>
+        <el-descriptions-item label="处理人">
+          {{ currentItem.handler?.real_name || '-' }}
         </el-descriptions-item>
-        <el-descriptions-item label="审批人">
-          {{ currentItem.approver?.realName || '-' }}
+        <el-descriptions-item label="原因" :span="2">
+          {{ currentItem.reason || '-' }}
         </el-descriptions-item>
-        <el-descriptions-item label="审批时间">
-          {{ currentItem.approvedAt || '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="创建时间">
-          {{ currentItem.createdAt }}
-        </el-descriptions-item>
-        <el-descriptions-item label="备注" :span="2">
-          {{ currentItem.remarks || '-' }}
+        <el-descriptions-item label="创建时间" :span="2">
+          {{ formatDateTime(currentItem.created_at) }}
         </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
@@ -309,48 +241,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
-import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, type FormInstance } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
-import { studentStatusApi } from '@/api/modules/student'
-import { userApi } from '@/api/modules/user'
+import studentStatusApi from '@/api/modules/student-status'
 import type {
-  StudentStatusChange,
-  StudentStatusChangeQuery,
-  CreateStudentStatusChangeData,
-  UpdateStudentStatusChangeData,
-  ApproveStudentStatusChangeData,
-  StudentStatusChangeType
-} from '@/types/student'
-import type { Student, User, Role } from '@/types/user'
+  StudentStatus,
+  StudentStatusQuery,
+  CreateStudentStatusData,
+  UpdateStudentStatusData
+} from '@/types/database'
+import { StudentStatusType } from '@/types/database'
+import type { User } from '@/types/database'
+import UserSelector from '@/components/business/UserSelector/index.vue'
 
-// 状态变更类型选项
-const statusChangeTypeOptions: Record<StudentStatusChangeType, string> = {
-  ENROLLMENT: '入学',
-  SUSPENSION: '休学',
-  RESUMPTION: '复学',
-  WITHDRAWAL: '退学',
-  GRADUATION: '毕业',
-  TRANSFER_IN: '转入',
-  TRANSFER_OUT: '转出',
-  MAJOR_CHANGE: '转专业'
+// 状态类型选项
+const statusTypeOptions: Record<StudentStatusType, string> = {
+  [StudentStatusType.ENROLLED]: '在读',
+  [StudentStatusType.SUSPENDED]: '休学',
+  [StudentStatusType.GRADUATED]: '毕业'
 }
 
 // 响应式数据
 const loading = ref(false)
-const statusChangeList = ref<StudentStatusChange[]>([])
+const statusList = ref<StudentStatus[]>([])
 const dialogVisible = ref(false)
-const approveDialogVisible = ref(false)
 const detailDialogVisible = ref(false)
-const editingItem = ref<StudentStatusChange | null>(null)
-const currentItem = ref<StudentStatusChange | null>(null)
+const editingItem = ref<StudentStatus | null>(null)
+const currentItem = ref<StudentStatus | null>(null)
 const submitting = ref(false)
-const approving = ref(false)
-const studentLoading = ref(false)
-const studentOptions = ref<Student[]>([])
 
 // 搜索表单
-const queryForm = reactive<StudentStatusChangeQuery>({
+const queryForm = reactive<StudentStatusQuery>({
   page: 1,
   pageSize: 20
 })
@@ -365,78 +287,41 @@ const pagination = reactive({
 })
 
 // 表单数据
-const formData = reactive<CreateStudentStatusChangeData>({
-  studentId: 0,
-  changeType: 'ENROLLMENT' as StudentStatusChangeType,
-  fromStatus: '',
-  toStatus: '',
-  reason: '',
-  effectiveDate: '',
-  remarks: ''
-})
-
-// 审批表单数据
-const approveForm = reactive<ApproveStudentStatusChangeData>({
-  approved: true,
-  remarks: ''
+const formData = reactive<CreateStudentStatusData>({
+  student_id: 0,
+  status_type: StudentStatusType.ENROLLED,
+  effective_date: '',
+  end_date: undefined,
+  reason: ''
 })
 
 // 表单引用
 const formRef = ref<FormInstance>()
-const approveFormRef = ref<FormInstance>()
 
 // 表单验证规则
 const formRules = {
-  studentId: [{ required: true, message: '请选择学生', trigger: 'change' }],
-  changeType: [{ required: true, message: '请选择变更类型', trigger: 'change' }],
-  toStatus: [{ required: true, message: '请输入新状态', trigger: 'blur' }],
-  reason: [{ required: true, message: '请输入变更原因', trigger: 'blur' }],
-  effectiveDate: [{ required: true, message: '请选择生效日期', trigger: 'change' }]
+  student_id: [{ required: true, message: '请选择学生', trigger: 'change' }],
+  status_type: [{ required: true, message: '请选择状态类型', trigger: 'change' }],
+  effective_date: [{ required: true, message: '请选择生效日期', trigger: 'change' }]
 }
 
 // 计算属性
-const getChangeTypeTagType = (type: StudentStatusChangeType) => {
+const getStatusTypeTagType = (type: StudentStatusType) => {
   const typeMap = {
-    ENROLLMENT: 'success',
-    SUSPENSION: 'warning',
-    RESUMPTION: 'success',
-    WITHDRAWAL: 'danger',
-    GRADUATION: 'success',
-    TRANSFER_IN: 'primary',
-    TRANSFER_OUT: 'info',
-    MAJOR_CHANGE: 'primary'
+    [StudentStatusType.ENROLLED]: 'success',
+    [StudentStatusType.SUSPENDED]: 'warning',
+    [StudentStatusType.GRADUATED]: 'success'
   }
   return typeMap[type] || 'info'
 }
 
-// 搜索学生
-const searchStudents = async (query: string) => {
-  if (!query) return
-
-  studentLoading.value = true
-  try {
-    const response = await userApi.getUsers({
-      page: 1,
-      pageSize: 20,
-      username: query
-    })
-    // 这里需要过滤出学生用户
-    studentOptions.value = response.list.filter((user: User) =>
-      user.roles.some((role: Role) => role.code === 'STUDENT')
-    ).map((user: User) => ({
-      id: user.id,
-      studentId: user.username, // 假设username就是学号
-      user
-    })) as Student[]
-  } catch (error) {
-    console.error('搜索学生失败:', error)
-  } finally {
-    studentLoading.value = false
-  }
+// 格式化日期时间
+const formatDateTime = (dateTime: string) => {
+  return new Date(dateTime).toLocaleString('zh-CN')
 }
 
-// 获取状态变更列表
-const fetchStatusChanges = async () => {
+// 获取学籍状态列表
+const fetchStatusList = async () => {
   loading.value = true
   try {
     const params = {
@@ -447,16 +332,16 @@ const fetchStatusChanges = async () => {
 
     // 处理日期范围
     if (dateRange.value) {
-      params.startDate = dateRange.value[0].toISOString().split('T')[0]
-      params.endDate = dateRange.value[1].toISOString().split('T')[0]
+      params.start_date = dateRange.value[0].toISOString().split('T')[0]
+      params.end_date = dateRange.value[1].toISOString().split('T')[0]
     }
 
-    const response = await studentStatusApi.getStatusChanges(params)
-    statusChangeList.value = response.list
-    pagination.total = response.total
+    const response = await studentStatusApi.getList(params)
+    statusList.value = response.data.list
+    pagination.total = response.data.total
   } catch (error) {
-    console.error('获取状态变更列表失败:', error)
-    ElMessage.error('获取状态变更列表失败')
+    console.error('获取学籍状态列表失败:', error)
+    ElMessage.error('获取学籍状态列表失败')
   } finally {
     loading.value = false
   }
@@ -465,16 +350,16 @@ const fetchStatusChanges = async () => {
 // 搜索
 const handleSearch = () => {
   pagination.page = 1
-  fetchStatusChanges()
+  fetchStatusList()
 }
 
 // 重置搜索
 const handleReset = () => {
   Object.assign(queryForm, {
-    studentId: undefined,
-    changeType: undefined,
-    startDate: undefined,
-    endDate: undefined
+    student_id: undefined,
+    status_type: undefined,
+    start_date: undefined,
+    end_date: undefined
   })
   dateRange.value = null
   handleSearch()
@@ -487,40 +372,30 @@ const showCreateDialog = () => {
 }
 
 // 查看详情
-const handleView = (item: StudentStatusChange) => {
+const handleView = (item: StudentStatus) => {
   currentItem.value = item
   detailDialogVisible.value = true
 }
 
 // 编辑
-const handleEdit = (item: StudentStatusChange) => {
+const handleEdit = (item: StudentStatus) => {
   editingItem.value = item
   Object.assign(formData, {
-    studentId: item.studentId,
-    changeType: item.changeType,
-    fromStatus: item.fromStatus || '',
-    toStatus: item.toStatus,
-    reason: item.reason,
-    effectiveDate: item.effectiveDate,
-    remarks: item.remarks || ''
+    student_id: item.student_id,
+    status_type: item.status_type,
+    effective_date: item.effective_date,
+    end_date: item.end_date || undefined,
+    reason: item.reason || ''
   })
   dialogVisible.value = true
-}
-
-// 审批
-const handleApprove = (item: StudentStatusChange) => {
-  currentItem.value = item
-  approveForm.approved = true
-  approveForm.remarks = ''
-  approveDialogVisible.value = true
 }
 
 // 删除
 const handleDelete = async (id: number) => {
   try {
-    await studentStatusApi.deleteStatusChange(id)
+    await studentStatusApi.delete(id)
     ElMessage.success('删除成功')
-    fetchStatusChanges()
+    fetchStatusList()
   } catch (error) {
     console.error('删除失败:', error)
     ElMessage.error('删除失败')
@@ -537,37 +412,19 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     if (editingItem.value) {
-      await studentStatusApi.updateStatusChange(editingItem.value.id, formData)
+      await studentStatusApi.update(editingItem.value.status_id, formData)
       ElMessage.success('更新成功')
     } else {
-      await studentStatusApi.createStatusChange(formData)
+      await studentStatusApi.create(formData)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
-    fetchStatusChanges()
+    fetchStatusList()
   } catch (error) {
     console.error('提交失败:', error)
     ElMessage.error('提交失败')
   } finally {
     submitting.value = false
-  }
-}
-
-// 提交审批
-const handleApproveSubmit = async () => {
-  if (!currentItem.value) return
-
-  approving.value = true
-  try {
-    await studentStatusApi.approveStatusChange(currentItem.value.id, approveForm)
-    ElMessage.success('审批成功')
-    approveDialogVisible.value = false
-    fetchStatusChanges()
-  } catch (error) {
-    console.error('审批失败:', error)
-    ElMessage.error('审批失败')
-  } finally {
-    approving.value = false
   }
 }
 
@@ -577,19 +434,22 @@ const resetForm = () => {
     formRef.value.resetFields()
   }
   Object.assign(formData, {
-    studentId: 0,
-    changeType: 'ENROLLMENT' as StudentStatusChangeType,
-    fromStatus: '',
-    toStatus: '',
-    reason: '',
-    effectiveDate: '',
-    remarks: ''
+    student_id: 0,
+    status_type: StudentStatusType.ENROLLED,
+    effective_date: '',
+    end_date: undefined,
+    reason: ''
   })
+}
+
+// 处理学生选择变化
+const handleStudentChange = (user?: User) => {
+  console.log('选择的学生:', user)
 }
 
 // 初始化
 onMounted(() => {
-  fetchStatusChanges()
+  fetchStatusList()
 })
 </script>
 

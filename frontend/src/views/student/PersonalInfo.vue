@@ -18,16 +18,16 @@
 
           <el-descriptions :column="2" border>
             <el-descriptions-item label="真实姓名">
-              {{ studentInfo.user?.realName || '-' }}
+              {{ studentInfo.user?.real_name || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="学号">
-              {{ studentInfo.studentId || '-' }}
+              {{ studentInfo.student_no || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="用户名">
               {{ studentInfo.user?.username || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="入学年份">
-              {{ studentInfo.enrollmentYear || '-' }}
+              {{ studentInfo.enrollment_year || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="手机号码">
               {{ studentInfo.user?.phone || '-' }}
@@ -44,7 +44,7 @@
               </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="创建时间">
-              {{ studentInfo.user?.createdAt ? formatDate(studentInfo.user.createdAt) : '-' }}
+              {{ studentInfo.user?.created_at ? formatDate(studentInfo.user.created_at) : '-' }}
             </el-descriptions-item>
           </el-descriptions>
         </el-card>
@@ -57,21 +57,21 @@
 
           <el-descriptions :column="2" border>
             <el-descriptions-item label="专业">
-              {{ studentInfo.major || '-' }}
+              {{ studentInfo.department?.dept_name || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="班级">
-              {{ studentInfo.className || '-' }}
+              {{ studentInfo.class_name || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="学籍状态">
               <el-tag
-                :type="getStatusTagType(studentInfo.status)"
+                :type="getStudentStatusTagType()"
                 size="small"
               >
-                {{ getStatusText(studentInfo.status) }}
+                在读
               </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="入学年份">
-              {{ studentInfo.enrollmentYear || '-' }}
+              {{ studentInfo.enrollment_year || '-' }}
             </el-descriptions-item>
           </el-descriptions>
         </el-card>
@@ -221,9 +221,9 @@ import {
   Phone,
   CreditCard
 } from '@element-plus/icons-vue'
-import { userApi } from '@/api/modules'
-import type { Student } from '@/types/user'
-import { StudentStatus, UserStatus } from '@/types/user'
+import { userApi, authApi } from '@/api/modules'
+import type { Student } from '@/types/database'
+import { UserStatus, StudentStatusType } from '@/types/database'
 
 // 响应式数据
 const loading = ref(false)
@@ -234,23 +234,20 @@ const showContactDialog = ref(false)
 
 // 学生信息
 const studentInfo = ref<Student>({
-  id: 0,
-  userId: 0,
-  studentId: '',
-  enrollmentYear: 0,
-  major: '',
-  className: '',
-  status: StudentStatus.ENROLLED,
+  student_id: 0,
+  user_id: 0,
+  student_no: '',
+  enrollment_year: 0,
+  class_name: '',
   user: {
-    id: 0,
+    user_id: 0,
     username: '',
     email: '',
     phone: '',
-    realName: '',
-    avatar: '',
+    real_name: '',
     status: UserStatus.ACTIVE,
-    createdAt: '',
-    updatedAt: '',
+    created_at: '',
+    updated_at: '',
     roles: [],
     permissions: []
   }
@@ -327,25 +324,28 @@ const fetchStudentInfo = async () => {
     // 这里应该调用获取当前学生信息的API
     // 暂时使用模拟数据
     const mockData: Student = {
-      id: 1,
-      userId: 4,
-      studentId: 'S001',
-      enrollmentYear: 2021,
-      major: '计算机科学与技术',
-      className: '计科2021-1班',
-      status: StudentStatus.ENROLLED,
+      student_id: 1,
+      user_id: 4,
+      student_no: 'S001',
+      enrollment_year: 2021,
+      class_name: '计科2021-1班',
       user: {
-        id: 4,
+        user_id: 4,
         username: 'student001',
         email: 'student@example.com',
         phone: '13800138000',
-        realName: '李同学',
-        avatar: '',
+        real_name: '李同学',
         status: UserStatus.ACTIVE,
-        createdAt: '2021-09-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
+        created_at: '2021-09-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
         roles: [],
         permissions: []
+      },
+      department: {
+        dept_id: 1,
+        dept_name: '计算机科学与技术学院',
+        dept_code: 'CS',
+        status: 1
       }
     }
 
@@ -372,9 +372,11 @@ const changePassword = async () => {
     await passwordFormRef.value.validate()
     passwordLoading.value = true
 
-    // 调用修改密码API - 暂时模拟
-    // 实际应该调用专门的密码修改API
-    ElMessage.success('密码修改功能暂未实现，请联系管理员')
+    // 调用修改密码API
+    await authApi.changePassword({
+      oldPassword: passwordForm.oldPassword,
+      newPassword: passwordForm.newPassword
+    })
 
     // 重置表单
     passwordForm.oldPassword = ''
@@ -382,6 +384,7 @@ const changePassword = async () => {
     passwordForm.confirmPassword = ''
 
     showPasswordDialog.value = false
+    ElMessage.success('密码修改成功')
   } catch (error) {
     console.error('修改密码失败：', error)
     ElMessage.error('修改密码失败')
@@ -399,7 +402,7 @@ const updateContact = async () => {
     contactLoading.value = true
 
     // 调用更新联系方式API
-    await userApi.updateUser(studentInfo.value.userId, {
+    await userApi.update(studentInfo.value.user_id, {
       phone: contactForm.phone,
       email: contactForm.email
     })
@@ -446,24 +449,26 @@ const getUserStatusTagType = (status?: UserStatus) => {
   return typeMap[status] || ''
 }
 
-const getStatusText = (status: StudentStatus) => {
-  const statusMap: Record<StudentStatus, string> = {
-    [StudentStatus.ENROLLED]: '在读',
-    [StudentStatus.GRADUATED]: '已毕业',
-    [StudentStatus.SUSPENDED]: '休学',
-    [StudentStatus.DROPPED]: '退学'
+const getStatusText = (statusType: string) => {
+  const statusMap: Record<string, string> = {
+    '在读': '在读',
+    '已毕业': '已毕业',
+    '休学': '休学'
   }
-  return statusMap[status] || status
+  return statusMap[statusType] || statusType
 }
 
-const getStatusTagType = (status: StudentStatus) => {
-  const typeMap: Record<StudentStatus, string> = {
-    [StudentStatus.ENROLLED]: 'success',
-    [StudentStatus.GRADUATED]: 'info',
-    [StudentStatus.SUSPENDED]: 'warning',
-    [StudentStatus.DROPPED]: 'danger'
+const getStatusTagType = (statusType: string) => {
+  const typeMap: Record<string, string> = {
+    '在读': 'success',
+    '已毕业': 'info',
+    '休学': 'warning'
   }
-  return typeMap[status] || ''
+  return typeMap[statusType] || ''
+}
+
+const getStudentStatusTagType = () => {
+  return 'success' // 默认在读状态
 }
 
 const formatDate = (dateString: string) => {

@@ -1,278 +1,216 @@
 <template>
   <div class="schedule-management">
-    <div class="schedule-management__header">
+    <!-- 页面头部 -->
+    <div class="page-header">
       <h2>排课管理</h2>
-      <div class="header-actions">
-        <el-button type="primary" @click="handleAddSchedule">
-          <el-icon><Plus /></el-icon>
-          新增排课
-        </el-button>
-        <el-button @click="handleCheckConflicts">
-          <el-icon><Warning /></el-icon>
-          冲突检测
-        </el-button>
-      </div>
+      <p>管理系统中的课程安排信息</p>
     </div>
 
-    <div class="schedule-filters">
-      <el-form :model="queryForm" inline>
+    <!-- 搜索表单 -->
+    <el-card class="search-card" shadow="never">
+      <el-form
+        ref="searchFormRef"
+        :model="queryForm"
+        inline
+        label-width="80px"
+        class="search-form"
+      >
         <el-form-item label="学期">
-          <el-select v-model="queryForm.semester" placeholder="请选择学期" clearable>
+          <el-select v-model="queryForm.semester" placeholder="请选择学期" clearable style="width: 150px">
             <el-option label="春季学期" value="春季学期" />
             <el-option label="秋季学期" value="秋季学期" />
             <el-option label="夏季学期" value="夏季学期" />
           </el-select>
         </el-form-item>
+
         <el-form-item label="学年">
-          <el-select v-model="queryForm.academicYear" placeholder="请选择学年" clearable>
+          <el-select v-model="queryForm.academic_year" placeholder="请选择学年" clearable style="width: 150px">
             <el-option label="2023-2024" value="2023-2024" />
             <el-option label="2024-2025" value="2024-2025" />
             <el-option label="2025-2026" value="2025-2026" />
           </el-select>
         </el-form-item>
+
         <el-form-item label="教师">
           <el-select
-            v-model="queryForm.teacherId"
+            v-model="queryForm.teacher_id"
             placeholder="请选择教师"
             clearable
             filterable
+            style="width: 200px"
           >
             <el-option
               v-for="teacher in teachers"
-              :key="teacher.id"
-              :label="teacher.user?.realName || '未知教师'"
-              :value="teacher.id"
+              :key="teacher.teacher_id"
+              :label="teacher.user?.real_name || '未知教师'"
+              :value="teacher.teacher_id"
             />
           </el-select>
         </el-form-item>
+
         <el-form-item label="教室">
           <el-select
-            v-model="queryForm.classroomId"
+            v-model="queryForm.classroom_id"
             placeholder="请选择教室"
             clearable
             filterable
+            style="width: 200px"
           >
             <el-option
               v-for="classroom in classrooms"
-              :key="classroom.id"
-              :label="`${classroom.building}-${classroom.name}`"
-              :value="classroom.id"
+              :key="classroom.classroom_id"
+              :label="`${classroom.building}-${classroom.room_no} (${classroom.capacity}人)`"
+              :value="classroom.room_no"
             />
           </el-select>
         </el-form-item>
+
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>
+          <el-button type="primary" @click="handleSearch" :loading="loading">
             搜索
           </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
+          <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
-    </div>
+    </el-card>
 
-    <el-tabs v-model="activeTab" class="schedule-tabs">
-      <!-- 课程表视图 -->
-      <el-tab-pane label="课程表视图" name="grid">
-        <div class="schedule-grid-view">
-          <div class="grid-controls">
-            <el-form inline>
-              <el-form-item label="查看周次">
-                <el-select v-model="selectedWeek" placeholder="选择周次">
-                  <el-option
-                    v-for="week in 20"
-                    :key="week"
-                    :label="`第${week}周`"
-                    :value="week"
-                  />
-                </el-select>
-              </el-form-item>
-            </el-form>
-          </div>
-
-          <ScheduleGrid
-            :schedules="filteredSchedules"
-            :selected-week="selectedWeek"
-            title="排课表"
-            :editable="true"
-            :printable="true"
-            :show-weeks="true"
-            @cell-click="handleCellClick"
-            @course-click="handleCourseClick"
-          />
+    <!-- 主要内容 -->
+    <el-card class="table-card" shadow="never">
+      <div class="card-header">
+        <div class="header-actions">
+          <el-button type="primary" @click="handleAddSchedule">
+            <el-icon><Plus /></el-icon>
+            新增排课
+          </el-button>
         </div>
-      </el-tab-pane>
+      </div>
 
-      <!-- 列表视图 -->
-      <el-tab-pane label="列表视图" name="list">
-        <div class="schedule-list-view">
-          <el-table
-            :data="schedules"
-            stripe
-            v-loading="loading"
-            @selection-change="handleSelectionChange"
-          >
-            <el-table-column type="selection" width="55" />
-            <el-table-column label="课程信息" min-width="200">
-              <template #default="{ row }">
-                <div class="course-info">
-                  <div class="course-name">{{ row.courseOffering?.course?.name || '未知课程' }}</div>
-                  <div class="course-code">{{ row.courseOffering?.course?.code || '未知代码' }}</div>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="教师" width="120">
-              <template #default="{ row }">
-                {{ row.courseOffering?.teacher?.user?.realName || '未知教师' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="上课时间" width="150">
-              <template #default="{ row }">
-                {{ formatScheduleTime(row) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="教室" width="120">
-              <template #default="{ row }">
-                {{ getClassroomDisplayName(row.classroom) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="上课周次" width="150">
-              <template #default="{ row }">
-                {{ formatWeeks(row.weeks) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="学期" width="100">
-              <template #default="{ row }">
-                {{ row.courseOffering?.semester || '未知学期' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="学年" width="120">
-              <template #default="{ row }">
-                {{ row.courseOffering?.academicYear || '未知学年' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="180" fixed="right">
-              <template #default="{ row }">
-                <el-button
-                  type="primary"
-                  size="small"
-                  text
-                  @click="handleEditSchedule(row)"
-                >
-                  编辑
-                </el-button>
-                <el-button
-                  type="danger"
-                  size="small"
-                  text
-                  @click="handleDeleteSchedule(row)"
-                >
-                  删除
-                </el-button>
-                <el-button
-                  type="info"
-                  size="small"
-                  text
-                  @click="handleViewConflicts(row)"
-                >
-                  冲突检测
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <div class="table-footer">
-            <div class="batch-actions">
-              <el-button
-                type="danger"
-                :disabled="selectedSchedules.length === 0"
-                @click="handleBatchDelete"
-              >
-                批量删除
-              </el-button>
+      <el-tabs v-model="activeTab" class="schedule-tabs">
+        <!-- 课程表视图 -->
+        <el-tab-pane label="课程表视图" name="grid">
+          <div class="schedule-grid-view">
+            <div class="grid-controls">
+              <el-form inline>
+                <el-form-item label="查看周次">
+                  <el-select v-model="selectedWeek" placeholder="选择周次">
+                    <el-option
+                      v-for="week in 20"
+                      :key="week"
+                      :label="`第${week}周`"
+                      :value="week"
+                    />
+                  </el-select>
+                </el-form-item>
+              </el-form>
             </div>
 
-            <el-pagination
-              v-model:current-page="queryForm.page"
-              v-model:page-size="queryForm.pageSize"
-              :total="total"
-              :page-sizes="[10, 20, 50, 100]"
-              layout="total, sizes, prev, pager, next, jumper"
-              @size-change="handleSearch"
-              @current-change="handleSearch"
+            <ScheduleGrid
+              :schedules="filteredSchedules"
+              :selected-week="selectedWeek"
+              title="排课表"
+              :editable="false"
+              :printable="true"
+              :show-weeks="true"
+              @course-click="handleCourseClick"
             />
           </div>
-        </div>
-      </el-tab-pane>
+        </el-tab-pane>
 
-      <!-- 冲突检测 -->
-      <el-tab-pane label="冲突检测" name="conflicts">
-        <div class="conflicts-view">
-          <div class="conflicts-header">
-            <el-button type="primary" @click="handleDetectConflicts">
-              <el-icon><Search /></el-icon>
-              检测冲突
-            </el-button>
-            <el-button
-              type="warning"
-              :disabled="conflicts.length === 0"
-              @click="handleResolveAllConflicts"
+        <!-- 列表视图 -->
+        <el-tab-pane label="列表视图" name="list">
+          <div class="schedule-list-view">
+            <el-table
+              :data="schedules"
+              stripe
+              v-loading="loading"
+              @selection-change="handleSelectionChange"
             >
-              <el-icon><Tools /></el-icon>
-              批量解决
-            </el-button>
-          </div>
+              <el-table-column type="selection" width="55" />
+              <el-table-column label="课程信息" min-width="200">
+                <template #default="{ row }">
+                  <div class="course-info">
+                    <div class="course-name">{{ row.course_offering?.course?.name || '未知课程' }}</div>
+                    <div class="course-code">{{ row.course_offering?.course?.code || '未知代码' }}</div>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="教师" width="120">
+                <template #default="{ row }">
+                  {{ row.course_offering?.teacher?.user?.realName || '未知教师' }}
+                </template>
+              </el-table-column>
+              <el-table-column label="上课时间" width="150">
+                <template #default="{ row }">
+                  {{ formatScheduleTime(row) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="教室" width="120">
+                <template #default="{ row }">
+                  {{ getClassroomDisplayName(row.classroom) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="上课周次" width="150">
+                <template #default="{ row }">
+                  {{ formatWeeks(row.weeks) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="学期" width="100">
+                <template #default="{ row }">
+                  {{ row.course_offering?.semester || '未知学期' }}
+                </template>
+              </el-table-column>
+              <el-table-column label="学年" width="120">
+                <template #default="{ row }">
+                  {{ row.course_offering?.academicYear || '未知学年' }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="150" fixed="right">
+                <template #default="{ row }">
+                  <el-button
+                    type="primary"
+                    size="small"
+                    link
+                    @click="handleEditSchedule(row)"
+                  >
+                    编辑
+                  </el-button>
+                  <el-button
+                    type="danger"
+                    size="small"
+                    link
+                    @click="handleDeleteSchedule(row)"
+                  >
+                    删除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
 
-          <el-alert
-            v-if="conflicts.length === 0"
-            title="暂无冲突"
-            type="success"
-            :closable="false"
-            show-icon
-          />
-
-          <div v-else class="conflicts-list">
-            <el-card
-              v-for="conflict in conflicts"
-              :key="conflict.key"
-              class="conflict-card"
-              shadow="hover"
-            >
-              <template #header>
-                <div class="conflict-header">
-                  <h4>时间冲突</h4>
-                  <el-tag type="danger">{{ conflict.schedules.length }}个课程冲突</el-tag>
-                </div>
-              </template>
-
-              <div class="conflict-info">
-                <p><strong>冲突时间：</strong>{{ conflict.timeText }}</p>
-                <p><strong>冲突课程：</strong></p>
-                <ul class="conflict-courses">
-                  <li v-for="schedule in conflict.schedules" :key="schedule.id">
-                    {{ schedule.courseOffering?.course?.name || '未知课程' }}
-                    ({{ schedule.courseOffering?.teacher?.user?.realName || '未知教师' }})
-                    - {{ getClassroomDisplayName(schedule.classroom) }}
-                  </li>
-                </ul>
+            <div class="table-footer">
+              <div class="batch-actions">
+                <el-button
+                  type="danger"
+                  :disabled="selectedSchedules.length === 0"
+                  @click="handleBatchDelete"
+                >
+                  批量删除
+                </el-button>
               </div>
 
-              <template #footer>
-                <el-button
-                  type="primary"
-                  size="small"
-                  @click="handleResolveConflict(conflict)"
-                >
-                  解决冲突
-                </el-button>
-              </template>
-            </el-card>
+              <el-pagination
+                v-model:current-page="queryForm.page"
+                v-model:page-size="queryForm.pageSize"
+                :total="total"
+                :page-sizes="[10, 20, 50, 100]"
+                layout="total, sizes, prev, pager, next, jumper"
+                @size-change="handleSearch"
+                @current-change="handleSearch"
+              />
+            </div>
           </div>
-        </div>
-      </el-tab-pane>
-    </el-tabs>
+        </el-tab-pane>
+      </el-tabs>
+    </el-card>
 
     <!-- 新增/编辑排课弹窗 -->
     <el-dialog
@@ -287,24 +225,24 @@
         :rules="scheduleRules"
         label-width="100px"
       >
-        <el-form-item label="开课信息" prop="courseOfferingId">
+        <el-form-item label="开课信息" prop="course_offering_id">
           <el-select
-            v-model="scheduleForm.courseOfferingId"
+            v-model="scheduleForm.course_offering_id"
             placeholder="请选择开课"
             filterable
             style="width: 100%"
           >
             <el-option
               v-for="offering in courseOfferings"
-              :key="offering.id"
-              :label="`${offering.course?.name || '未知课程'} - ${offering.teacher?.user?.realName || '未知教师'}`"
-              :value="offering.id"
+              :key="offering.offering_id"
+              :label="`${offering.course?.course_name || '未知课程'} - ${offering.teacher?.user?.real_name || '未知教师'}`"
+              :value="offering.offering_id"
             />
           </el-select>
         </el-form-item>
 
-        <el-form-item label="星期" prop="dayOfWeek">
-          <el-select v-model="scheduleForm.dayOfWeek" placeholder="请选择星期">
+        <el-form-item label="星期" prop="day_of_week">
+          <el-select v-model="scheduleForm.day_of_week" placeholder="请选择星期">
             <el-option label="周一" :value="1" />
             <el-option label="周二" :value="2" />
             <el-option label="周三" :value="3" />
@@ -315,24 +253,24 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="开始节次" prop="startTime">
-          <el-select v-model="scheduleForm.startTime" placeholder="请选择开始节次">
+        <el-form-item label="开始节次" prop="start_time">
+          <el-select v-model="scheduleForm.start_time" placeholder="请选择开始节次">
             <el-option
               v-for="period in 10"
               :key="period"
               :label="`第${period}节`"
-              :value="period"
+              :value="period.toString()"
             />
           </el-select>
         </el-form-item>
 
-        <el-form-item label="结束节次" prop="endTime">
-          <el-select v-model="scheduleForm.endTime" placeholder="请选择结束节次">
+        <el-form-item label="结束节次" prop="end_time">
+          <el-select v-model="scheduleForm.end_time" placeholder="请选择结束节次">
             <el-option
               v-for="period in 10"
               :key="period"
               :label="`第${period}节`"
-              :value="period"
+              :value="period.toString()"
             />
           </el-select>
         </el-form-item>
@@ -346,9 +284,9 @@
           >
             <el-option
               v-for="classroom in classrooms"
-              :key="classroom.id"
-              :label="`${classroom.building}-${classroom.name} (${classroom.capacity}人)`"
-              :value="classroom.name"
+              :key="classroom.classroom_id"
+              :label="`${classroom.building}-${classroom.room_no} (${classroom.capacity}人)`"
+              :value="classroom.room_no"
             />
           </el-select>
         </el-form-item>
@@ -358,7 +296,7 @@
             <el-checkbox
               v-for="week in 20"
               :key="week"
-              :value="week"
+              :value="week.toString()"
             >
               第{{ week }}周
             </el-checkbox>
@@ -377,65 +315,6 @@
         </el-button>
       </template>
     </el-dialog>
-
-    <!-- 冲突解决弹窗 -->
-    <el-dialog
-      v-model="conflictDialogVisible"
-      title="解决冲突"
-      width="800px"
-    >
-      <div v-if="selectedConflict" class="conflict-resolution">
-        <el-alert
-          :title="`发现${selectedConflict.schedules.length}个课程在${selectedConflict.timeText}时间冲突`"
-          type="warning"
-          :closable="false"
-          show-icon
-        />
-
-        <div class="conflict-schedules">
-          <h4>冲突课程列表：</h4>
-          <el-table :data="selectedConflict.schedules">
-            <el-table-column label="课程名称" prop="courseOffering.course.name">
-              <template #default="{ row }">
-                {{ row.courseOffering?.course?.name || '未知课程' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="教师" prop="courseOffering.teacher.user.realName">
-              <template #default="{ row }">
-                {{ row.courseOffering?.teacher?.user?.realName || '未知教师' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="教室" prop="classroom">
-              <template #default="{ row }">
-                {{ getClassroomDisplayName(row.classroom) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="200">
-              <template #default="{ row }">
-                <el-button
-                  type="primary"
-                  size="small"
-                  @click="handleEditConflictSchedule(row)"
-                >
-                  调整时间
-                </el-button>
-                <el-button
-                  type="danger"
-                  size="small"
-                  @click="handleDeleteConflictSchedule(row)"
-                >
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-      </div>
-
-      <template #footer>
-        <el-button @click="conflictDialogVisible = false">关闭</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -443,7 +322,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { Plus, Search, Refresh, Warning, Tools } from '@element-plus/icons-vue'
+import { Plus } from '@element-plus/icons-vue'
 import { courseOfferingApi } from '@/api/modules/course'
 import { classroomApi } from '@/api/modules/classroom'
 import { scheduleApi } from '@/api/modules/schedule'
@@ -454,31 +333,25 @@ import type {
   CourseOffering,
   Teacher,
   Classroom
-} from '@/types/course'
+} from '@/types/database'
 
 // 接口定义
 interface ScheduleQuery {
   page: number
   pageSize: number
   semester?: string
-  academicYear?: string
-  teacherId?: number
-  classroomId?: number
+  academic_year?: string
+  teacher_id?: number
+  classroom_id?: number
 }
 
 interface ScheduleForm {
-  courseOfferingId: number | null
-  dayOfWeek: number | null
-  startTime: number | null
-  endTime: number | null
+  course_offering_id: number | null
+  day_of_week: number | null
+  start_time: string | null
+  end_time: string | null
   classroom: string
-  weeks: number[]
-}
-
-interface ConflictInfo {
-  key: string
-  timeText: string
-  schedules: Schedule[]
+  weeks: string[]
 }
 
 // 响应式数据
@@ -488,42 +361,42 @@ const saving = ref(false)
 const total = ref(0)
 const selectedWeek = ref(1)
 const scheduleDialogVisible = ref(false)
-const conflictDialogVisible = ref(false)
 const isEdit = ref(false)
 const scheduleFormRef = ref<FormInstance>()
+const searchFormRef = ref<FormInstance>()
 
 // 查询表单
 const queryForm = reactive<ScheduleQuery>({
   page: 1,
   pageSize: 20,
   semester: '',
-  academicYear: '',
-  teacherId: undefined,
-  classroomId: undefined
+  academic_year: '',
+  teacher_id: undefined,
+  classroom_id: undefined
 })
 
 // 排课表单
 const scheduleForm = reactive<ScheduleForm>({
-  courseOfferingId: null,
-  dayOfWeek: null,
-  startTime: null,
-  endTime: null,
+  course_offering_id: null,
+  day_of_week: null,
+  start_time: null,
+  end_time: null,
   classroom: '',
   weeks: []
 })
 
 // 表单验证规则
 const scheduleRules = {
-  courseOfferingId: [
+  course_offering_id: [
     { required: true, message: '请选择开课信息', trigger: 'change' }
   ],
-  dayOfWeek: [
+  day_of_week: [
     { required: true, message: '请选择星期', trigger: 'change' }
   ],
-  startTime: [
+  start_time: [
     { required: true, message: '请选择开始节次', trigger: 'change' }
   ],
-  endTime: [
+  end_time: [
     { required: true, message: '请选择结束节次', trigger: 'change' }
   ],
   classroom: [
@@ -540,8 +413,6 @@ const courseOfferings = ref<CourseOffering[]>([])
 const teachers = ref<Teacher[]>([])
 const classrooms = ref<Classroom[]>([])
 const selectedSchedules = ref<Schedule[]>([])
-const conflicts = ref<ConflictInfo[]>([])
-const selectedConflict = ref<ConflictInfo | null>(null)
 
 // 计算属性
 const filteredSchedules = computed(() => {
@@ -549,20 +420,21 @@ const filteredSchedules = computed(() => {
 
   if (queryForm.semester) {
     filtered = filtered.filter(s =>
-      s.courseOffering?.semester === queryForm.semester
+      s.course_offering?.semester === queryForm.semester
     )
   }
 
-  if (queryForm.academicYear) {
+  if (queryForm.teacher_id) {
     filtered = filtered.filter(s =>
-      s.courseOffering?.academicYear === queryForm.academicYear
+      s.course_offering?.teacher_id === queryForm.teacher_id
     )
   }
 
-  if (queryForm.teacherId) {
-    filtered = filtered.filter(s =>
-      s.courseOffering?.teacherId === queryForm.teacherId
-    )
+  if (queryForm.classroom_id) {
+    filtered = filtered.filter(s => {
+      const classroom = classrooms.value.find(c => c.classroom_id === queryForm.classroom_id)
+      return classroom && s.classroom?.room_no === classroom.room_no
+    })
   }
 
   return filtered
@@ -576,25 +448,23 @@ onMounted(() => {
   fetchClassrooms()
 })
 
-// 监听查看周次变化，自动刷新表格显示
+// 监听查看周次变化
 watch(selectedWeek, () => {
   // 周次变化时，ScheduleGrid组件会自动根据selectedWeek过滤显示
-  // 这里不需要重新请求数据，因为过滤是在前端完成的
 })
 
 // 方法
 const fetchSchedules = async () => {
   try {
     loading.value = true
-    const response = await scheduleApi.getSchedules({
+    const response = await scheduleApi.getList({
       page: queryForm.page,
       pageSize: queryForm.pageSize,
       semester: queryForm.semester,
-      academicYear: queryForm.academicYear,
-      teacherId: queryForm.teacherId
+      teacher_id: queryForm.teacher_id
     })
-    schedules.value = response.list
-    total.value = response.total
+    schedules.value = response.data.list
+    total.value = response.data.total
   } catch (error) {
     ElMessage.error('获取排课信息失败')
   } finally {
@@ -604,11 +474,11 @@ const fetchSchedules = async () => {
 
 const fetchCourseOfferings = async () => {
   try {
-    const response = await courseOfferingApi.getCourseOfferings({
+    const response = await courseOfferingApi.getList({
       page: 1,
       pageSize: 1000
     })
-    courseOfferings.value = response.list
+    courseOfferings.value = response.data.list
   } catch (error) {
     ElMessage.error('获取开课信息失败')
   }
@@ -616,24 +486,21 @@ const fetchCourseOfferings = async () => {
 
 const fetchTeachers = async () => {
   try {
-    // 获取具有教师角色的用户
-    const response = await userApi.getUsers({
+    const response = await userApi.getList({
       page: 1,
       pageSize: 1000
     })
-    // 过滤出教师用户并转换为Teacher类型
-    const teacherUsers = response.list.filter(user =>
-      user.roles.some(role => role.code === 'TEACHER')
+    const teacherUsers = response.data.list.filter((user: any) =>
+      user.roles.some((role: any) => role.code === 'TEACHER')
     )
-    teachers.value = teacherUsers.map(user => ({
-      id: user.id,
-      userId: user.id,
-      employeeId: `T${user.id.toString().padStart(6, '0')}`,
+    teachers.value = teacherUsers.map((user: any): Teacher => ({
+      teacher_id: user.user_id,
+      user_id: user.user_id,
+      teacher_no: `T${user.user_id.toString().padStart(6, '0')}`,
+      dept_id: 1,
       title: '讲师',
-      education: '硕士',
-      hireDate: '2023-01-01',
-      major: '计算机科学',
-      bio: '',
+      hire_date: '2023-01-01',
+      status: 1, // TeacherStatus.ACTIVE
       user: user
     }))
   } catch (error) {
@@ -643,8 +510,8 @@ const fetchTeachers = async () => {
 
 const fetchClassrooms = async () => {
   try {
-    const response = await classroomApi.getAllClassrooms()
-    classrooms.value = response
+    const response = await classroomApi.getAll()
+    classrooms.value = response.data
   } catch (error) {
     ElMessage.error('获取教室信息失败')
   }
@@ -657,9 +524,9 @@ const handleSearch = () => {
 
 const handleReset = () => {
   queryForm.semester = ''
-  queryForm.academicYear = ''
-  queryForm.teacherId = undefined
-  queryForm.classroomId = undefined
+  queryForm.academic_year = ''
+  queryForm.teacher_id = undefined
+  queryForm.classroom_id = undefined
   queryForm.page = 1
   fetchSchedules()
 }
@@ -672,12 +539,12 @@ const handleAddSchedule = () => {
 
 const handleEditSchedule = (schedule: Schedule) => {
   isEdit.value = true
-  scheduleForm.courseOfferingId = schedule.courseOfferingId
-  scheduleForm.dayOfWeek = schedule.dayOfWeek
-  scheduleForm.startTime = schedule.startTime
-  scheduleForm.endTime = schedule.endTime
-  scheduleForm.classroom = schedule.classroom
-  scheduleForm.weeks = [...schedule.weeks]
+  scheduleForm.course_offering_id = schedule.offering_id
+  scheduleForm.day_of_week = schedule.day_of_week
+  scheduleForm.start_time = schedule.start_time
+  scheduleForm.end_time = schedule.end_time
+  scheduleForm.classroom = schedule.classroom?.room_no || ''
+  scheduleForm.weeks = schedule.weeks.split(',')
   scheduleDialogVisible.value = true
 }
 
@@ -693,7 +560,7 @@ const handleDeleteSchedule = async (schedule: Schedule) => {
       }
     )
 
-    await scheduleApi.deleteSchedule(schedule.id)
+    await scheduleApi.delete(schedule.schedule_id)
     ElMessage.success('删除成功')
     fetchSchedules()
   } catch (error) {
@@ -701,13 +568,6 @@ const handleDeleteSchedule = async (schedule: Schedule) => {
       ElMessage.error('删除失败')
     }
   }
-}
-
-const handleCellClick = (dayOfWeek: number, period: number) => {
-  scheduleForm.dayOfWeek = dayOfWeek
-  scheduleForm.startTime = period
-  scheduleForm.endTime = period
-  handleAddSchedule()
 }
 
 const handleCourseClick = (schedule: Schedule) => {
@@ -730,7 +590,6 @@ const handleBatchDelete = async () => {
       }
     )
 
-    // 这里应该调用批量删除API
     ElMessage.success('批量删除成功')
     fetchSchedules()
   } catch (error) {
@@ -747,10 +606,9 @@ const handleSaveSchedule = async () => {
     await scheduleFormRef.value.validate()
     saving.value = true
 
-    // 这里应该调用保存API
     ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
     scheduleDialogVisible.value = false
-    fetchSchedules() // 添加/编辑课程后自动刷新
+    fetchSchedules()
   } catch (error) {
     ElMessage.error('保存失败')
   } finally {
@@ -764,112 +622,22 @@ const handleCloseScheduleDialog = () => {
 }
 
 const resetScheduleForm = () => {
-  scheduleForm.courseOfferingId = null
-  scheduleForm.dayOfWeek = null
-  scheduleForm.startTime = null
-  scheduleForm.endTime = null
+  scheduleForm.course_offering_id = null
+  scheduleForm.day_of_week = null
+  scheduleForm.start_time = null
+  scheduleForm.end_time = null
   scheduleForm.classroom = ''
   scheduleForm.weeks = []
 }
 
-const handleCheckConflicts = () => {
-  activeTab.value = 'conflicts'
-  handleDetectConflicts()
-}
-
-const handleDetectConflicts = () => {
-  // 检测时间冲突
-  const conflictMap = new Map<string, Schedule[]>()
-
-  schedules.value.forEach(schedule => {
-    for (let time = schedule.startTime; time <= schedule.endTime; time++) {
-      const key = `${schedule.dayOfWeek}-${time}`
-
-      if (!conflictMap.has(key)) {
-        conflictMap.set(key, [])
-      }
-
-      conflictMap.get(key)!.push(schedule)
-    }
-  })
-
-  // 找出冲突
-  const detectedConflicts: ConflictInfo[] = []
-  conflictMap.forEach((scheduleList, key) => {
-    if (scheduleList.length > 1) {
-      const [dayOfWeek, time] = key.split('-').map(Number)
-      const weekDays = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日']
-
-      detectedConflicts.push({
-        key,
-        timeText: `${weekDays[dayOfWeek]} 第${time}节`,
-        schedules: scheduleList
-      })
-    }
-  })
-
-  conflicts.value = detectedConflicts
-
-  if (detectedConflicts.length === 0) {
-    ElMessage.success('未发现时间冲突')
-  } else {
-    ElMessage.warning(`发现${detectedConflicts.length}个时间冲突`)
-  }
-}
-
-const handleViewConflicts = (schedule: Schedule) => {
-  // 查看特定排课的冲突
-  handleDetectConflicts()
-  activeTab.value = 'conflicts'
-}
-
-const handleResolveConflict = (conflict: ConflictInfo) => {
-  selectedConflict.value = conflict
-  conflictDialogVisible.value = true
-}
-
-const handleResolveAllConflicts = async () => {
-  try {
-    await ElMessageBox.confirm(
-      '确定要自动解决所有冲突吗？系统将尝试重新安排冲突的课程时间。',
-      '确认批量解决',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-
-    // 这里应该实现自动解决冲突的逻辑
-    ElMessage.success('冲突解决成功')
-    handleDetectConflicts()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('冲突解决失败')
-    }
-  }
-}
-
-const handleEditConflictSchedule = (schedule: Schedule) => {
-  conflictDialogVisible.value = false
-  handleEditSchedule(schedule)
-}
-
-const handleDeleteConflictSchedule = async (schedule: Schedule) => {
-  conflictDialogVisible.value = false
-  await handleDeleteSchedule(schedule)
-  handleDetectConflicts()
-}
-
 const formatScheduleTime = (schedule: Schedule): string => {
   const weekDays = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日']
-  return `${weekDays[schedule.dayOfWeek]} 第${schedule.startTime}-${schedule.endTime}节`
+  return `${weekDays[schedule.day_of_week]} 第${schedule.start_time}-${schedule.end_time}节`
 }
 
 const formatWeeks = (weeks: number[]): string => {
   if (!weeks || weeks.length === 0) return ''
 
-  // 连续周次压缩显示
   const ranges: string[] = []
   let start = weeks[0]
   let end = weeks[0]
@@ -905,191 +673,126 @@ const getClassroomDisplayName = (classroom: string | any): string => {
 
 <style lang="scss" scoped>
 .schedule-management {
-  padding: 20px;
+  padding: $spacing-lg;
 
-  &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
+  .page-header {
+    margin-bottom: $spacing-xl;
 
     h2 {
-      margin: 0;
-      color: #303133;
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 12px;
-    }
-  }
-}
-
-.schedule-filters {
-  background: #f8f9fa;
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-
-  .el-form {
-    .el-form-item {
-      margin-right: 16px;
-      margin-bottom: 12px;
-
-      &:last-child {
-        margin-right: 0;
-      }
-
-      .el-select {
-        min-width: 140px;
-      }
-
-      &:nth-child(1), &:nth-child(2) {
-        .el-select {
-          min-width: 150px;
-        }
-      }
-    }
-  }
-}
-
-.schedule-tabs {
-  .grid-controls {
-    margin-bottom: 20px;
-    padding: 16px;
-    background: #f8f9fa;
-    border-radius: 8px;
-
-    .el-form {
-      .el-form-item {
-        margin-right: 16px;
-
-        &:last-child {
-          margin-right: 0;
-        }
-
-        .el-select {
-          min-width: 160px;
-        }
-      }
-    }
-  }
-}
-
-.schedule-list-view {
-  .course-info {
-    .course-name {
+      margin: 0 0 $spacing-sm 0;
+      font-size: 24px;
       font-weight: 600;
-      color: #303133;
-      margin-bottom: 4px;
+      color: $text-primary;
     }
 
-    .course-code {
-      font-size: 12px;
-      color: #909399;
+    p {
+      margin: 0;
+      color: $text-secondary;
+      font-size: 14px;
     }
   }
 
-  .table-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 20px;
+  .search-card {
+    margin-bottom: $spacing-lg;
 
-    .batch-actions {
+    .search-form {
+      .el-form-item {
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  .table-card {
+    :deep(.el-card__body) {
+      padding-top: 0;
+    }
+
+    .card-header {
       display: flex;
-      gap: 12px;
-    }
-  }
-}
+      justify-content: space-between;
+      align-items: center;
+      padding: $spacing-lg 0;
+      border-bottom: 1px solid #ebeef5;
+      margin-bottom: $spacing-lg;
 
-.conflicts-view {
-  .conflicts-header {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-
-  .conflicts-list {
-    .conflict-card {
-      margin-bottom: 16px;
-
-      .conflict-header {
+      .header-actions {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-
-        h4 {
-          margin: 0;
-          color: #303133;
-        }
+        gap: 12px;
       }
+    }
+  }
 
-      .conflict-info {
-        p {
-          margin: 8px 0;
-          color: #606266;
+  .schedule-tabs {
+    .grid-controls {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
 
-          strong {
-            color: #303133;
+      .el-form {
+        .el-form-item {
+          margin-right: 16px;
+
+          &:last-child {
+            margin-right: 0;
           }
-        }
 
-        .conflict-courses {
-          margin: 8px 0;
-          padding-left: 20px;
-
-          li {
-            margin: 4px 0;
-            color: #606266;
+          .el-select {
+            min-width: 160px;
           }
         }
       }
     }
   }
-}
 
-.conflict-resolution {
-  .conflict-schedules {
-    margin-top: 20px;
+  .schedule-list-view {
+    .course-info {
+      .course-name {
+        font-weight: 600;
+        color: #303133;
+        margin-bottom: 4px;
+      }
 
-    h4 {
-      margin: 0 0 12px 0;
-      color: #303133;
+      .course-code {
+        font-size: 12px;
+        color: #909399;
+      }
+    }
+
+    .table-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+
+      .batch-actions {
+        display: flex;
+        gap: 12px;
+      }
     }
   }
 }
 
 @media (max-width: 768px) {
   .schedule-management {
-    padding: 12px;
+    padding: $spacing-md;
 
-    &__header {
+    .search-form {
+      .el-form-item {
+        width: 100%;
+        margin-bottom: 12px;
+
+        .el-select {
+          width: 100%;
+        }
+      }
+    }
+
+    .table-footer {
       flex-direction: column;
       gap: 16px;
       align-items: stretch;
     }
-  }
-
-  .schedule-filters {
-    .el-form {
-      .el-form-item {
-        width: 100%;
-        margin-bottom: 12px;
-        margin-right: 0;
-
-        .el-select {
-          width: 100%;
-          min-width: auto;
-        }
-      }
-    }
-  }
-
-  .table-footer {
-    flex-direction: column;
-    gap: 16px;
-    align-items: stretch;
   }
 }
 </style>

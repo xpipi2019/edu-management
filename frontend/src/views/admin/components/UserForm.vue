@@ -43,9 +43,9 @@
         />
       </el-form-item>
 
-      <el-form-item label="真实姓名" prop="realName">
+      <el-form-item label="真实姓名" prop="real_name">
         <el-input
-          v-model="formData.realName"
+          v-model="formData.real_name"
           placeholder="请输入真实姓名"
           clearable
         />
@@ -74,9 +74,9 @@
         </el-radio-group>
       </el-form-item>
 
-      <el-form-item label="角色" prop="roleIds">
+      <el-form-item label="角色" prop="role_ids">
         <el-select
-          v-model="formData.roleIds"
+          v-model="formData.role_ids"
           placeholder="请选择角色"
           multiple
           style="width: 100%"
@@ -84,9 +84,9 @@
         >
           <el-option
             v-for="role in roleOptions"
-            :key="role.id"
-            :label="role.name"
-            :value="role.id"
+            :key="role.role_id"
+            :label="role.role_name"
+            :value="role.role_id"
           />
         </el-select>
       </el-form-item>
@@ -100,8 +100,8 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import BaseModal from '@/components/common/BaseModal/index.vue'
 import { userApi } from '@/api/modules/user'
 import { roleApi } from '@/api/modules/role'
-import type { User, Role, CreateUserData, UpdateUserData } from '@/types/user'
-import { UserStatus } from '@/types/user'
+import type { User, Role, CreateUserData, UpdateUserData } from '@/types/database'
+import { UserStatus } from '@/types/database'
 
 interface Props {
   modelValue: boolean
@@ -149,9 +149,9 @@ const formData = reactive<CreateUserData & { confirmPassword?: string; status?: 
   confirmPassword: '',
   email: '',
   phone: '',
-  realName: '',
+  real_name: '',
   status: UserStatus.ACTIVE,
-  roleIds: []
+  role_ids: []
 })
 
 // 表单验证规则
@@ -178,7 +178,7 @@ const formRules: FormRules = {
       trigger: 'blur'
     }
   ],
-  realName: [
+  real_name: [
     { required: true, message: '请输入真实姓名', trigger: 'blur' },
     { min: 2, max: 10, message: '真实姓名长度为 2 到 10 个字符', trigger: 'blur' }
   ],
@@ -189,7 +189,7 @@ const formRules: FormRules = {
   phone: [
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', trigger: 'blur' }
   ],
-  roleIds: [
+  role_ids: [
     { required: true, message: '请选择角色', trigger: 'change' }
   ]
 }
@@ -198,8 +198,8 @@ const formRules: FormRules = {
 const fetchRoles = async () => {
   try {
     rolesLoading.value = true
-    const roles = await roleApi.getAllRoles()
-    roleOptions.value = roles
+    const response = await roleApi.getAll()
+    roleOptions.value = response.data
   } catch (error) {
     console.error('获取角色列表失败:', error)
   } finally {
@@ -215,9 +215,9 @@ const resetForm = () => {
     confirmPassword: '',
     email: '',
     phone: '',
-    realName: '',
+    real_name: '',
     status: UserStatus.ACTIVE,
-    roleIds: []
+    role_ids: []
   })
   nextTick(() => {
     formRef.value?.clearValidate()
@@ -230,9 +230,9 @@ const fillFormData = (user: User) => {
     username: user.username,
     email: user.email,
     phone: user.phone || '',
-    realName: user.realName,
+    real_name: user.real_name,
     status: user.status,
-    roleIds: user.roles.map(role => role.id)
+    role_ids: user.roles?.map((role: any) => role.role_id) || []
   })
 }
 
@@ -249,11 +249,10 @@ const handleSubmit = async () => {
       const updateData: UpdateUserData = {
         email: formData.email,
         phone: formData.phone,
-        realName: formData.realName,
-        status: formData.status,
-        roleIds: formData.roleIds
+        real_name: formData.real_name,
+        status: formData.status
       }
-      await userApi.updateUser(props.user.id, updateData)
+      await userApi.update(props.user.user_id, updateData)
       ElMessage.success('更新用户成功')
     } else {
       // 新增用户
@@ -262,10 +261,9 @@ const handleSubmit = async () => {
         password: formData.password,
         email: formData.email,
         phone: formData.phone,
-        realName: formData.realName,
-        roleIds: formData.roleIds
+        real_name: formData.real_name
       }
-      await userApi.createUser(createData)
+      await userApi.create(createData)
       ElMessage.success('创建用户成功')
     }
 

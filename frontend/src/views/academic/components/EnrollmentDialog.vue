@@ -9,13 +9,13 @@
       <!-- 课程信息 -->
       <el-card class="course-info" shadow="never" v-if="offering">
         <div class="course-header">
-          <h3>{{ offering.course?.name }}</h3>
+          <h3>{{ offering.course?.course_name }}</h3>
           <div class="course-meta">
-            <el-tag type="info" size="small">{{ offering.course?.code }}</el-tag>
+            <el-tag type="info" size="small">{{ offering.course?.course_code }}</el-tag>
             <span class="separator">|</span>
-            <span>{{ offering.semester }} {{ offering.academicYear }}</span>
+            <span>{{ offering.semester }}</span>
             <span class="separator">|</span>
-            <span>已选：{{ students.length }}/{{ offering.maxStudents }}</span>
+            <span>已选：{{ students.length }}/{{ offering.max_students }}</span>
           </div>
         </div>
       </el-card>
@@ -23,20 +23,17 @@
       <!-- 学生表格 -->
       <el-table :data="students" stripe border v-loading="loading">
         <el-table-column type="index" label="序号" width="60" align="center" />
-        <el-table-column prop="studentId" label="学号" width="120" />
-        <el-table-column prop="realName" label="姓名" width="100" />
-        <el-table-column prop="gender" label="性别" width="80" align="center">
+        <el-table-column prop="student_no" label="学号" width="120" />
+        <el-table-column prop="user.real_name" label="姓名" width="100" />
+        <el-table-column prop="class_name" label="班级" width="120" />
+        <el-table-column prop="department.dept_name" label="专业">
           <template #default="{ row }">
-            <el-tag :type="row.gender === '男' ? 'primary' : 'warning'" size="small">
-              {{ row.gender }}
-            </el-tag>
+            {{ row.department?.dept_name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="className" label="班级" width="120" />
-        <el-table-column prop="major" label="专业" />
-        <el-table-column prop="enrollmentDate" label="选课时间" width="180">
+        <el-table-column label="选课时间" width="180">
           <template #default="{ row }">
-            {{ formatDateTime(row.enrollmentDate) }}
+            {{ formatDateTime(row.user?.created_at) }}
           </template>
         </el-table-column>
       </el-table>
@@ -47,27 +44,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import BaseModal from '@/components/common/BaseModal/index.vue'
-
-interface Student {
-  id: number
-  studentId: string
-  realName: string
-  gender: string
-  className: string
-  major: string
-  enrollmentDate: string
-}
-
-interface CourseOffering {
-  id: number
-  course?: {
-    name: string
-    code: string
-  }
-  semester: string
-  academicYear: string
-  maxStudents: number
-}
+import type { CourseOffering, Student } from '@/types/database'
 
 interface Props {
   modelValue: boolean
@@ -110,34 +87,24 @@ const fetchStudents = async () => {
 
   loading.value = true
   try {
-    // 模拟数据
+    // 模拟数据 - 应该调用真实API
     const mockStudents: Student[] = [
       {
-        id: 1,
-        studentId: '2021001',
-        realName: '张三',
-        gender: '男',
-        className: '计科2101班',
-        major: '计算机科学与技术',
-        enrollmentDate: '2024-02-15T10:30:00Z'
-      },
-      {
-        id: 2,
-        studentId: '2021002',
-        realName: '李四',
-        gender: '女',
-        className: '计科2101班',
-        major: '计算机科学与技术',
-        enrollmentDate: '2024-02-15T11:15:00Z'
-      },
-      {
-        id: 3,
-        studentId: '2021003',
-        realName: '王五',
-        gender: '男',
-        className: '软工2101班',
-        major: '软件工程',
-        enrollmentDate: '2024-02-15T14:20:00Z'
+        student_id: 1,
+        user_id: 1,
+        student_no: '2021001',
+        dept_id: 1,
+        class_name: '计科2101班',
+        grade: 2021,
+        enrollment_year: 2021,
+        user: {
+          user_id: 1,
+          username: 'zhangsan',
+          real_name: '张三',
+          status: 1,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z'
+        }
       }
     ]
 

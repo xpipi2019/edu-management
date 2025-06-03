@@ -1,26 +1,66 @@
-// 认证相关
-export { authApi } from './auth'
+// 认证相关API
+import authApi from './auth'
+export { authApi }
 
-// 用户管理
-export { userApi } from './user'
+// 用户管理API
+import userApi from './user'
+export { userApi }
 
-// 角色管理
-export { roleApi } from './role'
+// 角色管理API
+import roleApi from './role'
+export { roleApi }
 
-// 权限管理
-export { permissionApi } from './permission'
+// 权限管理API
+import permissionApi from './permission'
+export { permissionApi }
 
-// 部门管理
-export { departmentApi } from './department'
+// 部门管理API
+import departmentApi from './department'
+export { departmentApi }
 
-// 课程管理
-export { courseApi, courseOfferingApi, enrollmentApi, gradeApi } from './course'
+// 教师管理API
+import teacherApi from './teacher'
+export { teacherApi }
 
-// 教室管理
-export { classroomApi } from './classroom'
+// 学生管理API
+import studentApi from './student'
+export { studentApi }
 
-// 排课管理
-export { scheduleApi } from './schedule'
+// 课程相关API
+import { courseApi, courseOfferingApi, enrollmentApi, gradeApi } from './course'
+export { courseApi, courseOfferingApi, enrollmentApi, gradeApi }
 
-// 学生管理
-export { rewardPunishmentApi, studentStatusApi } from './student'
+// 教室管理API
+import classroomApi from './classroom'
+export { classroomApi }
+
+// 排课管理API
+import scheduleApi from './schedule'
+export { scheduleApi }
+
+// 学籍管理API
+import studentStatusApi from './student-status'
+export { studentStatusApi }
+
+// 奖惩管理API
+import rewardPunishmentApi from './reward-punishment'
+export { rewardPunishmentApi }
+
+// 统一导出所有API
+export default {
+  authApi,
+  userApi,
+  roleApi,
+  permissionApi,
+  departmentApi,
+  teacherApi,
+  studentApi,
+  courseApi,
+  courseOfferingApi,
+  enrollmentApi,
+  gradeApi,
+  classroomApi,
+  scheduleApi,
+  studentStatusApi,
+  rewardPunishmentApi
+}

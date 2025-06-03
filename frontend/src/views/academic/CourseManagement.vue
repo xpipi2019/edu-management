@@ -19,7 +19,7 @@
           <div class="search-form-items">
             <el-form-item label="课程名称">
               <el-input
-                v-model="searchForm.name"
+                v-model="searchForm.course_name"
                 placeholder="请输入课程名称"
                 clearable
                 style="width: 180px"
@@ -29,7 +29,7 @@
 
             <el-form-item label="课程代码">
               <el-input
-                v-model="searchForm.code"
+                v-model="searchForm.course_code"
                 placeholder="请输入课程代码"
                 clearable
                 style="width: 180px"
@@ -39,15 +39,14 @@
 
             <el-form-item label="课程类型">
               <el-select
-                v-model="searchForm.type"
+                v-model="searchForm.course_type"
                 placeholder="请选择课程类型"
                 clearable
                 style="width: 140px"
               >
-                <el-option label="必修课" :value="CourseType.REQUIRED" />
-                <el-option label="选修课" :value="CourseType.ELECTIVE" />
-                <el-option label="公共课" :value="CourseType.PUBLIC" />
-                <el-option label="专业课" :value="CourseType.PROFESSIONAL" />
+                <el-option label="必修" :value="CourseType.REQUIRED" />
+                <el-option label="选修" :value="CourseType.ELECTIVE" />
+                <el-option label="公选" :value="CourseType.PUBLIC_ELECTIVE" />
               </el-select>
             </el-form-item>
 
@@ -58,9 +57,8 @@
                 clearable
                 style="width: 130px"
               >
-                <el-option label="草稿" :value="CourseStatus.DRAFT" />
-                <el-option label="已发布" :value="CourseStatus.PUBLISHED" />
-                <el-option label="已归档" :value="CourseStatus.ARCHIVED" />
+                <el-option label="停用" :value="CourseStatus.INACTIVE" />
+                <el-option label="启用" :value="CourseStatus.ACTIVE" />
               </el-select>
             </el-form-item>
 
@@ -90,9 +88,9 @@
       <BaseTable
         :data="courseList"
         :loading="loading"
-        :total="total"
-        :page="queryParams.page"
-        :page-size="queryParams.pageSize"
+        :total="pagination.total"
+        :page="pagination.page"
+        :page-size="pagination.pageSize"
         @add="handleAdd"
         @edit="handleEdit"
         @delete="handleDelete"
@@ -102,17 +100,17 @@
         @size-change="handleSizeChange"
         add-text="新增"
       >
-        <el-table-column prop="code" label="课程代码" min-width="120" />
+        <el-table-column prop="course_code" label="课程代码" min-width="120" />
 
-        <el-table-column prop="name" label="课程名称" min-width="200" />
+        <el-table-column prop="course_name" label="课程名称" min-width="200" />
 
-        <el-table-column prop="type" label="课程类型" width="100" align="center">
+        <el-table-column prop="course_type" label="课程类型" width="100" align="center">
           <template #default="{ row }">
             <el-tag
-              :type="getCourseTypeColor(row.type)"
+              :type="getCourseTypeColor(row.course_type)"
               size="small"
             >
-              {{ getCourseTypeText(row.type) }}
+              {{ getCourseTypeText(row.course_type) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -132,23 +130,9 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="prerequisites" label="先修课程" min-width="150">
+        <el-table-column prop="description" label="课程描述" min-width="150">
           <template #default="{ row }">
-            <el-tag
-              v-for="prerequisite in row.prerequisites"
-              :key="prerequisite.id"
-              size="small"
-              style="margin-right: 4px"
-            >
-              {{ prerequisite.name }}
-            </el-tag>
-            <span v-if="!row.prerequisites || row.prerequisites.length === 0">-</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="createdAt" label="创建时间" width="180">
-          <template #default="{ row }">
-            {{ formatDateTime(row.createdAt) }}
+            <span>{{ row.description || '-' }}</span>
           </template>
         </el-table-column>
 
@@ -164,23 +148,23 @@
           </el-button>
 
           <el-button
-            v-if="row.status === CourseStatus.DRAFT"
+            v-if="row.status === CourseStatus.INACTIVE"
             type="success"
             size="small"
             link
-            @click="handlePublish(row)"
+            @click="handleActivate(row)"
           >
-            发布
+            启用
           </el-button>
 
           <el-button
-            v-else-if="row.status === CourseStatus.PUBLISHED"
+            v-else-if="row.status === CourseStatus.ACTIVE"
             type="warning"
             size="small"
             link
-            @click="handleArchive(row)"
+            @click="handleDeactivate(row)"
           >
-            归档
+            停用
           </el-button>
 
           <el-button
@@ -188,7 +172,7 @@
             size="small"
             link
             @click="handleDelete(row)"
-            :disabled="row.status === CourseStatus.PUBLISHED"
+            :disabled="row.status === CourseStatus.ACTIVE"
           >
             删除
           </el-button>
@@ -200,6 +184,7 @@
     <CourseForm
       v-model="showCourseForm"
       :course="currentCourse"
+      :key="currentCourse?.course_id || 'add'"
       @success="handleFormSuccess"
     />
   </div>
@@ -211,8 +196,8 @@ import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import BaseTable from '@/components/common/BaseTable/index.vue'
 import CourseForm from './components/CourseForm.vue'
 import { courseApi } from '@/api/modules/course'
-import type { Course, CourseQuery } from '@/types/course'
-import { CourseType, CourseStatus } from '@/types/course'
+import type { Course, CourseQuery } from '@/types/database'
+import { CourseType, CourseStatus } from '@/types/database'
 
 // 表单引用
 const searchFormRef = ref<FormInstance>()
@@ -222,30 +207,25 @@ const loading = ref(false)
 
 // 课程列表数据
 const courseList = ref<Course[]>([])
-const total = ref(0)
 
 // 弹窗相关
 const showCourseForm = ref(false)
 const currentCourse = ref<Course | null>(null)
 
-// 搜索表单
-const searchForm = reactive({
-  name: '',
-  code: '',
-  type: undefined as CourseType | undefined,
-  status: undefined as CourseStatus | undefined,
-  credits: undefined as number | undefined
-})
-
-// 查询参数
-const queryParams = reactive<CourseQuery>({
+// 分页
+const pagination = reactive({
   page: 1,
   pageSize: 10,
-  name: '',
-  code: '',
-  type: undefined,
-  status: undefined,
-  credits: undefined
+  total: 0
+})
+
+// 搜索表单
+const searchForm = reactive({
+  course_name: '',
+  course_code: '',
+  course_type: undefined as CourseType | undefined,
+  status: undefined as CourseStatus | undefined,
+  credits: undefined as number | undefined
 })
 
 // 格式化日期时间函数
@@ -266,29 +246,21 @@ const getCourseTypeColor = (type: CourseType) => {
   const colorMap = {
     [CourseType.REQUIRED]: 'danger',
     [CourseType.ELECTIVE]: 'primary',
-    [CourseType.PUBLIC]: 'success',
-    [CourseType.PROFESSIONAL]: 'warning'
+    [CourseType.PUBLIC_ELECTIVE]: 'success'
   }
   return colorMap[type] || 'info'
 }
 
 // 获取课程类型文本
 const getCourseTypeText = (type: CourseType) => {
-  const textMap = {
-    [CourseType.REQUIRED]: '必修课',
-    [CourseType.ELECTIVE]: '选修课',
-    [CourseType.PUBLIC]: '公共课',
-    [CourseType.PROFESSIONAL]: '专业课'
-  }
-  return textMap[type] || '未知'
+  return type || '未知'
 }
 
 // 获取课程状态颜色
 const getCourseStatusColor = (status: CourseStatus) => {
   const colorMap = {
-    [CourseStatus.DRAFT]: 'info',
-    [CourseStatus.PUBLISHED]: 'success',
-    [CourseStatus.ARCHIVED]: 'warning'
+    [CourseStatus.INACTIVE]: 'danger',
+    [CourseStatus.ACTIVE]: 'success'
   }
   return colorMap[status] || 'info'
 }
@@ -296,9 +268,8 @@ const getCourseStatusColor = (status: CourseStatus) => {
 // 获取课程状态文本
 const getCourseStatusText = (status: CourseStatus) => {
   const textMap = {
-    [CourseStatus.DRAFT]: '草稿',
-    [CourseStatus.PUBLISHED]: '已发布',
-    [CourseStatus.ARCHIVED]: '已归档'
+    [CourseStatus.INACTIVE]: '停用',
+    [CourseStatus.ACTIVE]: '启用'
   }
   return textMap[status] || '未知'
 }
@@ -307,9 +278,17 @@ const getCourseStatusText = (status: CourseStatus) => {
 const fetchCourses = async () => {
   try {
     loading.value = true
-    const response = await courseApi.getCourses(queryParams)
-    courseList.value = response.list
-    total.value = response.total
+    const params = {
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      course_name: searchForm.course_name,
+      course_code: searchForm.course_code,
+      course_type: searchForm.course_type,
+      status: searchForm.status
+    }
+    const response = await courseApi.getList(params)
+    courseList.value = response.data.list
+    pagination.total = response.data.total
   } catch (error: any) {
     ElMessage.error(error.message || '获取课程列表失败')
   } finally {
@@ -319,14 +298,7 @@ const fetchCourses = async () => {
 
 // 处理搜索
 const handleSearch = () => {
-  Object.assign(queryParams, {
-    page: 1,
-    name: searchForm.name,
-    code: searchForm.code,
-    type: searchForm.type,
-    status: searchForm.status,
-    credits: searchForm.credits
-  })
+  pagination.page = 1
   fetchCourses()
 }
 
@@ -334,41 +306,33 @@ const handleSearch = () => {
 const handleReset = () => {
   searchFormRef.value?.resetFields()
   Object.assign(searchForm, {
-    name: '',
-    code: '',
-    type: undefined,
+    course_name: '',
+    course_code: '',
+    course_type: undefined,
     status: undefined,
     credits: undefined
   })
-  Object.assign(queryParams, {
-    page: 1,
-    pageSize: 10,
-    name: '',
-    code: '',
-    type: undefined,
-    status: undefined,
-    credits: undefined
-  })
+  pagination.page = 1
   fetchCourses()
 }
 
 // 处理表格搜索
 const handleTableSearch = (keyword: string) => {
-  queryParams.keyword = keyword
-  queryParams.page = 1
+  searchForm.course_name = keyword
+  pagination.page = 1
   fetchCourses()
 }
 
 // 处理页码变化
 const handlePageChange = (page: number) => {
-  queryParams.page = page
+  pagination.page = page
   fetchCourses()
 }
 
 // 处理页大小变化
 const handleSizeChange = (size: number) => {
-  queryParams.pageSize = size
-  queryParams.page = 1
+  pagination.pageSize = size
+  pagination.page = 1
   fetchCourses()
 }
 
@@ -388,7 +352,7 @@ const handleEdit = (course: Course) => {
 const handleDelete = async (course: Course) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除课程 "${course.name}"？此操作不可恢复。`,
+      `确定要删除课程 "${course.course_name}"？此操作不可恢复。`,
       '删除确认',
       {
         type: 'warning',
@@ -397,7 +361,7 @@ const handleDelete = async (course: Course) => {
       }
     )
 
-    await courseApi.deleteCourse(course.id)
+    await courseApi.delete(course.course_id)
     ElMessage.success('删除课程成功')
     fetchCourses()
   } catch (error: any) {
@@ -407,48 +371,48 @@ const handleDelete = async (course: Course) => {
   }
 }
 
-// 处理发布课程
-const handlePublish = async (course: Course) => {
+// 处理启用课程
+const handleActivate = async (course: Course) => {
   try {
     await ElMessageBox.confirm(
-      `确定要发布课程 "${course.name}"？发布后课程将对学生可见。`,
-      '发布确认',
+      `确定要启用课程 "${course.course_name}"？启用后课程将对学生可见。`,
+      '启用确认',
       {
         type: 'warning',
-        confirmButtonText: '确定发布',
+        confirmButtonText: '确定启用',
         cancelButtonText: '取消'
       }
     )
 
-    await courseApi.updateCourse(course.id, { status: CourseStatus.PUBLISHED })
-    ElMessage.success('发布课程成功')
+    await courseApi.update(course.course_id, { status: CourseStatus.ACTIVE })
+    ElMessage.success('启用课程成功')
     fetchCourses()
   } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error(error.message || '发布课程失败')
+      ElMessage.error(error.message || '启用课程失败')
     }
   }
 }
 
-// 处理归档课程
-const handleArchive = async (course: Course) => {
+// 处理停用课程
+const handleDeactivate = async (course: Course) => {
   try {
     await ElMessageBox.confirm(
-      `确定要归档课程 "${course.name}"？归档后课程将不再对学生可见。`,
-      '归档确认',
+      `确定要停用课程 "${course.course_name}"？停用后课程将不再对学生可见。`,
+      '停用确认',
       {
         type: 'warning',
-        confirmButtonText: '确定归档',
+        confirmButtonText: '确定停用',
         cancelButtonText: '取消'
       }
     )
 
-    await courseApi.updateCourse(course.id, { status: CourseStatus.ARCHIVED })
-    ElMessage.success('归档课程成功')
+    await courseApi.update(course.course_id, { status: CourseStatus.INACTIVE })
+    ElMessage.success('停用课程成功')
     fetchCourses()
   } catch (error: any) {
     if (error !== 'cancel') {
-      ElMessage.error(error.message || '归档课程失败')
+      ElMessage.error(error.message || '停用课程失败')
     }
   }
 }

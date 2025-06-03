@@ -62,6 +62,14 @@
           <el-icon><OfficeBuilding /></el-icon>
           <template #title>教室管理</template>
         </el-menu-item>
+        <el-menu-item index="/academic/student-status">
+          <el-icon><School /></el-icon>
+          <template #title>学籍管理</template>
+        </el-menu-item>
+        <el-menu-item index="/academic/reward-punishment">
+          <el-icon><Trophy /></el-icon>
+          <template #title>奖惩管理</template>
+        </el-menu-item>
       </el-sub-menu>
 
       <!-- 教师功能 -->
@@ -125,7 +133,9 @@ import {
   EditPen,
   Plus,
   View,
-  Postcard
+  Postcard,
+  School,
+  Trophy
 } from '@element-plus/icons-vue'
 import { usePermission } from '@/composables/usePermission'
 import { useAppStore } from '@/stores/app'

@@ -19,7 +19,7 @@
           <div class="search-form-items">
             <el-form-item label="课程名称">
               <el-select
-                v-model="searchForm.courseId"
+                v-model="searchForm.course_id"
                 placeholder="请选择课程"
                 clearable
                 filterable
@@ -28,16 +28,16 @@
               >
                 <el-option
                   v-for="course in courseOptions"
-                  :key="course.id"
-                  :label="`${course.code} - ${course.name}`"
-                  :value="course.id"
+                  :key="course.course_id"
+                  :label="`${course.course_code} - ${course.course_name}`"
+                  :value="course.course_id"
                 />
               </el-select>
             </el-form-item>
 
             <el-form-item label="任课教师">
               <el-select
-                v-model="searchForm.teacherId"
+                v-model="searchForm.teacher_id"
                 placeholder="请选择教师"
                 clearable
                 filterable
@@ -46,9 +46,9 @@
               >
                 <el-option
                   v-for="teacher in teacherOptions"
-                  :key="teacher.id"
-                  :label="teacher.realName"
-                  :value="teacher.id"
+                  :key="teacher.teacher_id"
+                  :label="teacher.real_name"
+                  :value="teacher.teacher_id"
                 />
               </el-select>
             </el-form-item>
@@ -57,16 +57,6 @@
               <el-input
                 v-model="searchForm.semester"
                 placeholder="请输入学期"
-                clearable
-                style="width: 120px"
-                @keyup.enter="handleSearch"
-              />
-            </el-form-item>
-
-            <el-form-item label="学年">
-              <el-input
-                v-model="searchForm.academicYear"
-                placeholder="请输入学年"
                 clearable
                 style="width: 120px"
                 @keyup.enter="handleSearch"
@@ -120,28 +110,28 @@
         <el-table-column prop="course" label="课程信息" min-width="200">
           <template #default="{ row }">
             <div>
-              <div class="course-code">{{ row.course?.code }}</div>
-              <div class="course-name">{{ row.course?.name }}</div>
+              <div class="course-code">{{ row.course?.course_code }}</div>
+              <div class="course-name">{{ row.course?.course_name }}</div>
             </div>
           </template>
         </el-table-column>
 
         <el-table-column prop="teacher" label="任课教师" width="120">
           <template #default="{ row }">
-            {{ row.teacher?.user?.realName || '-' }}
+            {{ row.teacher?.user?.real_name || '-' }}
           </template>
         </el-table-column>
 
         <el-table-column prop="semester" label="学期" width="100" align="center" />
 
-        <el-table-column prop="academicYear" label="学年" width="100" align="center" />
+        <el-table-column prop="academic_year" label="学年" width="100" align="center" />
 
-        <el-table-column prop="maxStudents" label="容量" width="80" align="center" />
+        <el-table-column prop="max_students" label="容量" width="80" align="center" />
 
-        <el-table-column prop="currentStudents" label="已选" width="80" align="center">
+        <el-table-column prop="current_students" label="已选" width="80" align="center">
           <template #default="{ row }">
-            <span :class="{ 'text-danger': row.currentStudents >= row.maxStudents }">
-              {{ row.currentStudents }}
+            <span :class="{ 'text-danger': row.current_students >= row.max_students }">
+              {{ row.current_students }}
             </span>
           </template>
         </el-table-column>
@@ -161,7 +151,7 @@
                 size="small"
                 style="margin-right: 4px; margin-bottom: 4px"
               >
-                周{{ getDayText(schedule.dayOfWeek) }} 第{{ schedule.startTime }}-{{ schedule.endTime }}节
+                周{{ getDayText(schedule.day_of_week) }} 第{{ schedule.start_time }}-{{ schedule.end_time }}节
               </el-tag>
             </div>
             <span v-else>-</span>
@@ -241,7 +231,8 @@
     <!-- 开课表单弹窗 -->
     <CourseOfferingForm
       v-model="showOfferingForm"
-      :offering="null"
+      :offering="currentOffering"
+      :key="currentOffering?.offering_id || 'add'"
       @success="handleFormSuccess"
     />
 
@@ -260,35 +251,26 @@ import BaseTable from '@/components/common/BaseTable/index.vue'
 import CourseOfferingForm from './components/CourseOfferingForm.vue'
 import EnrollmentDialog from './components/EnrollmentDialog.vue'
 import { courseOfferingApi, courseApi } from '@/api/modules/course'
-import { userApi } from '@/api/modules/user'
-import { OfferingStatus } from '@/types/course'
-import type { CourseOffering, Course } from '@/types/course'
+import { teacherApi } from '@/api/modules/teacher'
+import type {
+  CourseOffering,
+  Course,
+  CourseOfferingQuery,
+  TeacherInfo
+} from '@/types/database'
+import { OfferingStatus } from '@/types/database'
 
 // 接口定义
-interface TeacherInfo {
-  id: number
-  realName: string
-  employeeId: string
-}
-
 interface Schedule {
-  id: number
-  dayOfWeek: number
-  startTime: number
-  endTime: number
-  classroom: string
-  weeks: number[]
-}
-
-interface CourseOfferingQuery {
-  page: number
-  pageSize: number
-  courseId?: number
-  teacherId?: number
-  semester?: string
-  academicYear?: string
-  status?: OfferingStatus
-  keyword?: string
+  schedule_id: number
+  day_of_week: number
+  start_time: string
+  end_time: string
+  classroom?: {
+    room_no: string
+    building: string
+  }
+  weeks: string
 }
 
 // 表单引用
@@ -314,10 +296,9 @@ const currentOffering = ref<CourseOffering | null>(null)
 
 // 搜索表单
 const searchForm = reactive({
-  courseId: undefined as number | undefined,
-  teacherId: undefined as number | undefined,
+  course_id: undefined as number | undefined,
+  teacher_id: undefined as number | undefined,
   semester: '',
-  academicYear: '',
   status: undefined as OfferingStatus | undefined
 })
 
@@ -325,10 +306,9 @@ const searchForm = reactive({
 const queryParams = reactive<CourseOfferingQuery>({
   page: 1,
   pageSize: 10,
-  courseId: undefined,
-  teacherId: undefined,
+  course_id: undefined,
+  teacher_id: undefined,
   semester: '',
-  academicYear: '',
   status: undefined
 })
 
@@ -352,30 +332,16 @@ const getDayText = (dayOfWeek: number): string => {
 
 const getOfferingStatusColor = (status: OfferingStatus) => {
   const colorMap = {
-    [OfferingStatus.DRAFT]: 'info',
-    [OfferingStatus.PENDING]: 'warning',
-    [OfferingStatus.APPROVED]: 'success',
-    [OfferingStatus.PUBLISHED]: 'success',
-    [OfferingStatus.ENROLLMENT]: 'primary',
-    [OfferingStatus.TEACHING]: 'warning',
-    [OfferingStatus.COMPLETED]: '',
-    [OfferingStatus.CANCELLED]: 'danger',
-    [OfferingStatus.REJECTED]: 'danger'
+    [OfferingStatus.INACTIVE]: 'danger',
+    [OfferingStatus.ACTIVE]: 'success'
   }
   return colorMap[status] || 'info'
 }
 
 const getOfferingStatusText = (status: OfferingStatus) => {
   const textMap = {
-    [OfferingStatus.DRAFT]: '草稿',
-    [OfferingStatus.PENDING]: '待审核',
-    [OfferingStatus.APPROVED]: '已批准',
-    [OfferingStatus.PUBLISHED]: '已发布',
-    [OfferingStatus.ENROLLMENT]: '选课中',
-    [OfferingStatus.TEACHING]: '教学中',
-    [OfferingStatus.COMPLETED]: '已完成',
-    [OfferingStatus.CANCELLED]: '已取消',
-    [OfferingStatus.REJECTED]: '已拒绝'
+    [OfferingStatus.INACTIVE]: '停用',
+    [OfferingStatus.ACTIVE]: '开放'
   }
   return textMap[status] || '未知'
 }
@@ -384,11 +350,10 @@ const getOfferingStatusText = (status: OfferingStatus) => {
 const fetchOfferings = async () => {
   try {
     loading.value = true
-    const response = await courseOfferingApi.getCourseOfferings(queryParams)
+    const response = await courseOfferingApi.getList(queryParams)
 
-    // 直接使用原始数据
-    offeringList.value = response.list
-    total.value = response.total
+    offeringList.value = response.data.list
+    total.value = response.data.total
   } catch (error: any) {
     ElMessage.error(error.message || '获取开课列表失败')
   } finally {
@@ -399,8 +364,8 @@ const fetchOfferings = async () => {
 const fetchCourses = async () => {
   try {
     coursesLoading.value = true
-    const courses = await courseApi.getAllCourses()
-    courseOptions.value = courses
+    const response = await courseApi.getAll()
+    courseOptions.value = response.data
   } catch (error) {
     console.error('获取课程列表失败:', error)
   } finally {
@@ -411,14 +376,8 @@ const fetchCourses = async () => {
 const fetchTeachers = async () => {
   try {
     teachersLoading.value = true
-    // 这里需要一个获取教师列表的API
-    // const teachers = await userApi.getTeachers()
-    // teacherOptions.value = teachers.map(teacher => ({
-    //   id: teacher.id,
-    //   realName: teacher.user.realName,
-    //   employeeId: teacher.employeeId
-    // }))
-    teacherOptions.value = [] // 暂时为空
+    const response = await teacherApi.getInfoList()
+    teacherOptions.value = response.data.list
   } catch (error) {
     console.error('获取教师列表失败:', error)
   } finally {
@@ -430,10 +389,9 @@ const fetchTeachers = async () => {
 const handleSearch = () => {
   Object.assign(queryParams, {
     page: 1,
-    courseId: searchForm.courseId,
-    teacherId: searchForm.teacherId,
+    course_id: searchForm.course_id,
+    teacher_id: searchForm.teacher_id,
     semester: searchForm.semester,
-    academicYear: searchForm.academicYear,
     status: searchForm.status
   })
   fetchOfferings()
@@ -442,19 +400,17 @@ const handleSearch = () => {
 const handleReset = () => {
   searchFormRef.value?.resetFields()
   Object.assign(searchForm, {
-    courseId: undefined,
-    teacherId: undefined,
+    course_id: undefined,
+    teacher_id: undefined,
     semester: '',
-    academicYear: '',
     status: undefined
   })
   Object.assign(queryParams, {
     page: 1,
     pageSize: 10,
-    courseId: undefined,
-    teacherId: undefined,
+    course_id: undefined,
+    teacher_id: undefined,
     semester: '',
-    academicYear: '',
     status: undefined
   })
   fetchOfferings()
@@ -490,7 +446,7 @@ const handleEdit = (offering: CourseOffering) => {
 const handleDelete = async (offering: CourseOffering) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除开课 "${offering.course.name}"？此操作不可恢复。`,
+      `确定要删除开课 "${offering.course?.course_name}"？此操作不可恢复。`,
       '删除确认',
       {
         type: 'warning',
@@ -499,7 +455,7 @@ const handleDelete = async (offering: CourseOffering) => {
       }
     )
 
-    await courseOfferingApi.deleteCourseOffering(offering.id)
+    await courseOfferingApi.delete(offering.offering_id)
     ElMessage.success('删除开课成功')
     fetchOfferings()
   } catch (error: any) {
@@ -512,7 +468,7 @@ const handleDelete = async (offering: CourseOffering) => {
 const handlePublish = async (offering: CourseOffering) => {
   try {
     await ElMessageBox.confirm(
-      `确定要发布开课 "${offering.course.name}"？`,
+      `确定要发布开课 "${offering.course?.course_name}"？`,
       '发布确认',
       {
         type: 'warning',
@@ -521,7 +477,7 @@ const handlePublish = async (offering: CourseOffering) => {
       }
     )
 
-    await courseOfferingApi.updateCourseOffering(offering.id, { status: OfferingStatus.PUBLISHED })
+    await courseOfferingApi.update(offering.offering_id, { status: OfferingStatus.ACTIVE })
     ElMessage.success('发布开课成功')
     fetchOfferings()
   } catch (error: any) {
@@ -534,7 +490,7 @@ const handlePublish = async (offering: CourseOffering) => {
 const handleStartEnrollment = async (offering: CourseOffering) => {
   try {
     await ElMessageBox.confirm(
-      `确定要开放课程 "${offering.course.name}" 的选课？`,
+      `确定要开放课程 "${offering.course?.course_name}" 的选课？`,
       '开放选课确认',
       {
         type: 'warning',
@@ -543,7 +499,7 @@ const handleStartEnrollment = async (offering: CourseOffering) => {
       }
     )
 
-    await courseOfferingApi.updateCourseOffering(offering.id, { status: OfferingStatus.ENROLLMENT })
+    await courseOfferingApi.update(offering.offering_id, { status: OfferingStatus.ACTIVE })
     ElMessage.success('开放选课成功')
     fetchOfferings()
   } catch (error: any) {

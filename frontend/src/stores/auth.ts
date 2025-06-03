@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { User, LoginForm, LoginResponse } from '@/types/user'
+import type { User, LoginForm, LoginResponse } from '@/types/database'
 
 export const useAuthStore = defineStore('auth', () => {
   // 状态
@@ -10,7 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 计算属性
   const isLoggedIn = computed(() => !!token.value)
-  const userRoles = computed(() => user.value?.roles.map(role => role.code) || [])
+  const userRoles = computed(() => user.value?.roles?.map(role => role.role_code) || [])
   const userPermissions = computed(() => {
     if (!user.value?.roles) return []
 
@@ -18,7 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
     const permissions = new Set<string>()
     user.value.roles.forEach(role => {
       role.permissions?.forEach(permission => {
-        permissions.add(permission.code)
+        permissions.add(permission.permission_code)
       })
     })
 
@@ -50,12 +50,12 @@ export const useAuthStore = defineStore('auth', () => {
   // 设置认证信息
   const setAuth = (authData: LoginResponse) => {
     token.value = authData.token
-    refreshToken.value = authData.refreshToken
+    refreshToken.value = authData.refresh_token
     user.value = authData.user
 
     // 保存到localStorage
     localStorage.setItem('token', authData.token)
-    localStorage.setItem('refreshToken', authData.refreshToken)
+    localStorage.setItem('refreshToken', authData.refresh_token)
     localStorage.setItem('user', JSON.stringify(authData.user))
   }
 
@@ -78,11 +78,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // 更新用户信息
-  const updateUser = (userData: Partial<User>) => {
-    if (user.value) {
-      user.value = { ...user.value, ...userData }
+  const updateUser = (userData: User) => {
+    user.value = userData
       localStorage.setItem('user', JSON.stringify(user.value))
-    }
   }
 
   // 检查权限

@@ -91,24 +91,24 @@ service.interceptors.response.use(
 
 // 请求方法封装
 export const request = {
-  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return service.get(url, config).then(res => res.data.data)
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return service.get(url, config).then(res => res.data)
   },
 
-  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    return service.post(url, data, config).then(res => res.data.data)
+  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return service.post(url, data, config).then(res => res.data)
   },
 
-  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    return service.put(url, data, config).then(res => res.data.data)
+  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return service.put(url, data, config).then(res => res.data)
   },
 
-  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return service.delete(url, config).then(res => res.data.data)
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return service.delete(url, config).then(res => res.data)
   },
 
-  patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    return service.patch(url, data, config).then(res => res.data.data)
+  patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    return service.patch(url, data, config).then(res => res.data)
   }
 }
 

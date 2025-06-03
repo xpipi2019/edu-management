@@ -10,13 +10,13 @@
       <el-card class="course-info" shadow="never">
         <div class="course-header">
           <div class="course-details">
-            <h3>{{ offering?.course?.name }}</h3>
+            <h3>{{ offering?.course?.course_name }}</h3>
             <div class="course-meta">
-              <el-tag type="info" size="small">{{ offering?.course?.code }}</el-tag>
+              <el-tag type="info" size="small">{{ offering?.course?.course_code }}</el-tag>
               <span class="separator">|</span>
-              <span>{{ offering?.semester }} {{ offering?.academicYear }}</span>
+              <span>{{ offering?.semester }}</span>
               <span class="separator">|</span>
-              <span>{{ offering?.classroom }}</span>
+              <span>教室待安排</span>
             </div>
           </div>
           <div class="enrollment-stats">
@@ -28,7 +28,7 @@
             </div>
             <div class="stat-item">
               <span class="stat-label">容量</span>
-              <span class="stat-value">{{ offering?.maxStudents }}</span>
+              <span class="stat-value">{{ offering?.max_students }}</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">剩余</span>
@@ -265,7 +265,7 @@ import { ElMessage, type FormInstance } from 'element-plus'
 import { User, Male, Female, TrendCharts } from '@element-plus/icons-vue'
 import BaseModal from '@/components/common/BaseModal/index.vue'
 import { enrollmentApi } from '@/api/modules/course'
-import type { CourseOffering, Enrollment } from '@/types/course'
+import type { CourseOffering, Enrollment } from '@/types/database'
 
 // 本地学生显示接口（简化版）
 interface StudentDisplay {
@@ -322,11 +322,11 @@ const searchForm = reactive({
 
 // 计算属性
 const remainingCapacity = computed(() => {
-  return (props.offering?.maxStudents || 0) - studentList.value.length
+  return (props.offering?.max_students || 0) - studentList.value.length
 })
 
 const isOverCapacity = computed(() => {
-  return studentList.value.length > (props.offering?.maxStudents || 0)
+  return studentList.value.length > (props.offering?.max_students || 0)
 })
 
 const filteredStudents = computed(() => {
@@ -381,7 +381,7 @@ const getFemaleCount = (): number => {
 
 const getEnrollmentRate = (): number => {
   if (!props.offering) return 0
-  return Math.round((studentList.value.length / props.offering.maxStudents) * 100)
+  return Math.round((studentList.value.length / props.offering.max_students) * 100)
 }
 
 // 数据获取函数

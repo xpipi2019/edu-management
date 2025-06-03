@@ -10,11 +10,11 @@
       <el-card class="course-info" shadow="never">
         <div class="course-header">
           <div class="course-details">
-            <h3>{{ offering?.course?.name }}</h3>
+            <h3>{{ offering?.course?.course_name }}</h3>
             <div class="course-meta">
-              <el-tag type="info" size="small">{{ offering?.course?.code }}</el-tag>
+              <el-tag type="info" size="small">{{ offering?.course?.course_code }}</el-tag>
               <span class="separator">|</span>
-              <span>{{ offering?.semester }} {{ offering?.academicYear }}</span>
+              <span>{{ offering?.semester }}</span>
               <span class="separator">|</span>
               <span>学分：{{ offering?.course?.credits }}</span>
             </div>
@@ -92,28 +92,28 @@
 
           <el-table-column type="index" label="序号" width="60" align="center" />
 
-          <el-table-column prop="student.studentId" label="学号" width="120" align="center">
+          <el-table-column prop="student.student_no" label="学号" width="120" align="center">
             <template #default="{ row }">
-              {{ row.student?.studentId || '-' }}
+              {{ row.student?.student_no || '-' }}
             </template>
           </el-table-column>
 
-          <el-table-column prop="student.realName" label="姓名" width="100" align="center">
+          <el-table-column prop="student.real_name" label="姓名" width="100" align="center">
             <template #default="{ row }">
-              {{ row.student?.realName || '-' }}
+              {{ row.student?.real_name || '-' }}
             </template>
           </el-table-column>
 
-          <el-table-column prop="student.className" label="班级" width="120" align="center">
+          <el-table-column prop="student.class_name" label="班级" width="120" align="center">
             <template #default="{ row }">
-              {{ row.student?.className || '-' }}
+              {{ row.student?.class_name || '-' }}
             </template>
           </el-table-column>
 
-          <el-table-column prop="regularScore" label="平时成绩" width="120" align="center">
+          <el-table-column prop="usual_score" label="平时成绩" width="120" align="center">
             <template #default="{ row }">
               <el-input-number
-                v-model="row.regularScore"
+                v-model="row.usual_score"
                 :min="0"
                 :max="100"
                 :precision="1"
@@ -125,10 +125,10 @@
             </template>
           </el-table-column>
 
-          <el-table-column prop="midtermScore" label="期中成绩" width="120" align="center">
+          <el-table-column prop="exam_score" label="期中成绩" width="120" align="center">
             <template #default="{ row }">
               <el-input-number
-                v-model="row.midtermScore"
+                v-model="row.exam_score"
                 :min="0"
                 :max="100"
                 :precision="1"
@@ -140,10 +140,10 @@
             </template>
           </el-table-column>
 
-          <el-table-column prop="finalScore" label="期末成绩" width="120" align="center">
+          <el-table-column prop="final_score" label="期末成绩" width="120" align="center">
             <template #default="{ row }">
               <el-input-number
-                v-model="row.finalScore"
+                v-model="row.final_score"
                 :min="0"
                 :max="100"
                 :precision="1"
@@ -155,35 +155,11 @@
             </template>
           </el-table-column>
 
-          <el-table-column prop="totalScore" label="总成绩" width="100" align="center">
+          <el-table-column prop="grade_point" label="成绩点" width="100" align="center">
             <template #default="{ row }">
-              <span :class="getTotalGradeClass(row.totalScore)">
-                {{ row.totalScore || '-' }}
+              <span :class="getTotalGradeClass(row.final_score)">
+                {{ row.grade_point || '-' }}
               </span>
-            </template>
-          </el-table-column>
-
-          <el-table-column prop="gradeLevel" label="等级" width="80" align="center">
-            <template #default="{ row }">
-              <el-tag
-                v-if="row.gradeLevel"
-                :type="getGradeLevelColor(row.gradeLevel)"
-                size="small"
-              >
-                {{ row.gradeLevel }}
-              </el-tag>
-              <span v-else>-</span>
-            </template>
-          </el-table-column>
-
-          <el-table-column prop="status" label="状态" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag
-                :type="getGradeStatusColor(row)"
-                size="small"
-              >
-                {{ getGradeStatusText(row) }}
-              </el-tag>
             </template>
           </el-table-column>
 
@@ -281,6 +257,7 @@
     <BatchGradeDialog
       v-model="showBatchDialog"
       :students="selectedRows"
+      :key="'batch-' + selectedRows.length"
       @success="handleBatchSuccess"
     />
 
@@ -288,6 +265,7 @@
     <QuickGradeDialog
       v-model="showQuickDialog"
       :grade="currentGrade"
+      :key="currentGrade?.grade_id || 'quick'"
       @success="handleQuickSuccess"
     />
   </BaseModal>
@@ -299,23 +277,22 @@ import { ElMessage, ElMessageBox, type TableInstance } from 'element-plus'
 import BaseModal from '@/components/common/BaseModal/index.vue'
 import BatchGradeDialog from './BatchGradeDialog.vue'
 import QuickGradeDialog from './QuickGradeDialog.vue'
-import { gradeApi } from '@/api/modules/course'
-import type { CourseOffering, Grade, Enrollment } from '@/types/course'
+import { gradeApi } from '@/api/modules'
+import type { CourseOffering, Grade, Enrollment } from '@/types/database'
 
 // 扩展成绩接口用于显示
 interface GradeDisplay extends Grade {
   student?: {
     id: number
-    studentId: string
-    realName: string
-    className: string
+    student_no: string
+    real_name: string
+    class_name: string
   }
   changed?: boolean
-  regularScore?: number
-  midtermScore?: number
-  finalScore?: number
-  totalScore?: number
-  gradeLevel?: string
+  usual_score?: number
+  exam_score?: number
+  final_score?: number
+  grade_point?: number
   remarks?: string
 }
 
@@ -367,8 +344,8 @@ const filteredGrades = computed(() => {
   // 搜索过滤
   if (searchKeyword.value) {
     filtered = filtered.filter(grade =>
-      grade.student?.studentId?.includes(searchKeyword.value) ||
-      grade.student?.realName?.includes(searchKeyword.value)
+      grade.student?.student_no?.includes(searchKeyword.value) ||
+      grade.student?.real_name?.includes(searchKeyword.value)
     )
   }
 
@@ -376,16 +353,16 @@ const filteredGrades = computed(() => {
   if (gradeFilter.value) {
     switch (gradeFilter.value) {
       case 'graded':
-        filtered = filtered.filter(grade => grade.totalScore !== null && grade.totalScore !== undefined)
+        filtered = filtered.filter(grade => grade.final_score !== null && grade.final_score !== undefined)
         break
       case 'ungraded':
-        filtered = filtered.filter(grade => grade.totalScore === null || grade.totalScore === undefined)
+        filtered = filtered.filter(grade => grade.final_score === null || grade.final_score === undefined)
         break
       case 'failed':
-        filtered = filtered.filter(grade => grade.totalScore !== null && grade.totalScore !== undefined && grade.totalScore < 60)
+        filtered = filtered.filter(grade => grade.final_score !== null && grade.final_score !== undefined && grade.final_score < 60)
         break
       case 'excellent':
-        filtered = filtered.filter(grade => grade.totalScore !== null && grade.totalScore !== undefined && grade.totalScore >= 90)
+        filtered = filtered.filter(grade => grade.final_score !== null && grade.final_score !== undefined && grade.final_score >= 90)
         break
     }
   }
@@ -395,9 +372,9 @@ const filteredGrades = computed(() => {
 
 // 工具函数
 const calculateTotalGrade = (grade: GradeDisplay): number => {
-  const usual = grade.regularScore || 0
-  const midterm = grade.midtermScore || 0
-  const final = grade.finalScore || 0
+  const usual = grade.usual_score || 0
+  const midterm = grade.exam_score || 0
+  const final = grade.final_score || 0
 
   // 权重：平时30%，期中30%，期末40%
   return Math.round(usual * 0.3 + midterm * 0.3 + final * 0.4)
@@ -430,63 +407,66 @@ const getGradeLevelColor = (level: string): string => {
 }
 
 const getGradeStatusColor = (grade: GradeDisplay) => {
-  if (grade.totalScore === null || grade.totalScore === undefined) {
+  if (grade.final_score === null || grade.final_score === undefined) {
     return 'info'
   }
-  return grade.totalScore >= 60 ? 'success' : 'danger'
+  return grade.final_score >= 60 ? 'success' : 'danger'
 }
 
 const getGradeStatusText = (grade: GradeDisplay): string => {
-  if (grade.totalScore === null || grade.totalScore === undefined) {
+  if (grade.final_score === null || grade.final_score === undefined) {
     return '未录入'
   }
-  return grade.totalScore >= 60 ? '及格' : '不及格'
+  return grade.final_score >= 60 ? '及格' : '不及格'
 }
 
 const getGradedCount = (): number => {
   return gradeList.value.filter(grade =>
-    grade.totalScore !== null && grade.totalScore !== undefined
+    grade.final_score !== null && grade.final_score !== undefined
   ).length
 }
 
 const getUngradedCount = (): number => {
   return gradeList.value.filter(grade =>
-    grade.totalScore === null || grade.totalScore === undefined
+    grade.final_score === null || grade.final_score === undefined
   ).length
 }
 
 const getAverageGrade = (): string => {
   const gradedList = gradeList.value.filter(grade =>
-    grade.totalScore !== null && grade.totalScore !== undefined
+    grade.final_score !== null && grade.final_score !== undefined
   )
   if (gradedList.length === 0) return '0'
 
-  const sum = gradedList.reduce((total, grade) => total + (grade.totalScore || 0), 0)
+  const sum = gradedList.reduce((total, grade) => total + (grade.final_score || 0), 0)
   return (sum / gradedList.length).toFixed(1)
 }
 
 const getPassRate = (): string => {
   const gradedList = gradeList.value.filter(grade =>
-    grade.totalScore !== null && grade.totalScore !== undefined
+    grade.final_score !== null && grade.final_score !== undefined
   )
   if (gradedList.length === 0) return '0'
 
-  const passCount = gradedList.filter(grade => (grade.totalScore || 0) >= 60).length
+  const passCount = gradedList.filter(grade => (grade.final_score || 0) >= 60).length
   return ((passCount / gradedList.length) * 100).toFixed(1)
 }
 
 const getExcellentRate = (): string => {
   const gradedList = gradeList.value.filter(grade =>
-    grade.totalScore !== null && grade.totalScore !== undefined
+    grade.final_score !== null && grade.final_score !== undefined
   )
   if (gradedList.length === 0) return '0'
 
-  const excellentCount = gradedList.filter(grade => (grade.totalScore || 0) >= 90).length
+  const excellentCount = gradedList.filter(grade => (grade.final_score || 0) >= 90).length
   return ((excellentCount / gradedList.length) * 100).toFixed(1)
 }
 
 const getGradeDistribution = (level: string): number => {
-  return gradeList.value.filter(grade => grade.gradeLevel === level).length
+  return gradeList.value.filter(grade => {
+    const totalScore = calculateTotalScore(grade)
+    return getGradeLevel(totalScore) === level
+  }).length
 }
 
 // 数据获取函数
@@ -498,59 +478,46 @@ const fetchGrades = async () => {
     // 模拟成绩数据
     const mockGrades: GradeDisplay[] = [
       {
-        id: 1,
-        enrollmentId: 1,
-        student: { id: 1, studentId: '2021001', realName: '张三', className: '计科2101班' },
-        regularScore: 85,
-        midtermScore: 78,
-        finalScore: 82,
-        totalScore: 82,
-        gradeLevel: 'B',
-        remarks: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        grade_id: 1,
+        enrollment_id: 1,
+        student: { id: 1, student_no: '2021001', real_name: '张三', class_name: '计科2101班' },
+        usual_score: 85,
+        exam_score: 82,
+        final_score: 82,
+        grade_point: 3.2,
+        remarks: ''
       },
       {
-        id: 2,
-        enrollmentId: 2,
-        student: { id: 2, studentId: '2021002', realName: '李四', className: '计科2101班' },
-        regularScore: 92,
-        midtermScore: 88,
-        finalScore: 90,
-        totalScore: 90,
-        gradeLevel: 'A',
-        remarks: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        grade_id: 2,
+        enrollment_id: 2,
+        student: { id: 2, student_no: '2021002', real_name: '李四', class_name: '计科2101班' },
+        usual_score: 92,
+        exam_score: 90,
+        final_score: 90,
+        grade_point: 4.0,
+        remarks: ''
       },
       {
-        id: 3,
-        enrollmentId: 3,
-        student: { id: 3, studentId: '2021003', realName: '王五', className: '软工2101班' },
-        regularScore: 75,
-        midtermScore: 72,
-        finalScore: 68,
-        totalScore: 71,
-        gradeLevel: 'C',
-        remarks: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        grade_id: 3,
+        enrollment_id: 3,
+        student: { id: 3, student_no: '2021003', real_name: '王五', class_name: '软工2101班' },
+        usual_score: 75,
+        exam_score: 68,
+        final_score: 71,
+        grade_point: 2.1,
+        remarks: ''
       },
       {
-        id: 4,
-        enrollmentId: 4,
-        student: { id: 4, studentId: '2021004', realName: '赵六', className: '数据2101班' },
-        remarks: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        grade_id: 4,
+        enrollment_id: 4,
+        student: { id: 4, student_no: '2021004', real_name: '赵六', class_name: '数据2101班' },
+        remarks: ''
       },
       {
-        id: 5,
-        enrollmentId: 5,
-        student: { id: 5, studentId: '2021005', realName: '孙七', className: '计科2102班' },
-        remarks: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        grade_id: 5,
+        enrollment_id: 5,
+        student: { id: 5, student_no: '2021005', real_name: '孙七', class_name: '计科2102班' },
+        remarks: ''
       }
     ]
 
@@ -565,9 +532,12 @@ const fetchGrades = async () => {
 // 事件处理函数
 const handleGradeChange = (grade: GradeDisplay) => {
   // 计算总成绩
-  if (grade.regularScore || grade.midtermScore || grade.finalScore) {
-    grade.totalScore = calculateTotalGrade(grade)
-    grade.gradeLevel = getGradeLevel(grade.totalScore)
+  if (grade.usual_score || grade.exam_score) {
+    const usual = grade.usual_score || 0
+    const exam = grade.exam_score || 0
+    // 权重：平时40%，期末60%
+    grade.final_score = Math.round(usual * 0.4 + exam * 0.6)
+    grade.grade_point = calculateGradePoint(grade.final_score)
   }
 
   grade.changed = true
@@ -579,12 +549,9 @@ const handleSelectionChange = (selection: GradeDisplay[]) => {
 
 const handleSaveGrade = async (grade: GradeDisplay) => {
   try {
-    await gradeApi.updateGrade(grade.id, {
-      regularScore: grade.regularScore,
-      midtermScore: grade.midtermScore,
-      finalScore: grade.finalScore,
-      totalScore: grade.totalScore,
-      gradeLevel: grade.gradeLevel
+    await gradeApi.update(grade.grade_id, {
+      usual_score: grade.usual_score,
+      exam_score: grade.exam_score
     })
 
     grade.changed = false
@@ -603,14 +570,13 @@ const handleSaveAll = async () => {
 
   try {
     saving.value = true
-    await gradeApi.batchUpdateGrades({
-      grades: changedGrades.map(grade => ({
-        enrollmentId: grade.enrollmentId,
-        regularScore: grade.regularScore,
-        midtermScore: grade.midtermScore,
-        finalScore: grade.finalScore
+    await gradeApi.batchUpdate(
+      changedGrades.map(grade => ({
+        enrollment_id: grade.enrollment_id,
+        usual_score: grade.usual_score,
+        exam_score: grade.exam_score
       }))
-    })
+    )
 
     changedGrades.forEach(grade => grade.changed = false)
     ElMessage.success('批量保存成功')
@@ -648,6 +614,26 @@ const handleBatchSuccess = () => {
 
 const handleQuickSuccess = () => {
   fetchGrades()
+}
+
+const calculateGradePoint = (finalScore?: number): number => {
+  if (!finalScore) return 0
+  if (finalScore >= 90) return 4.0
+  if (finalScore >= 80) return 3.0
+  if (finalScore >= 70) return 2.0
+  if (finalScore >= 60) return 1.0
+  return 0
+}
+
+// 计算总评成绩
+const calculateTotalScore = (grade: Grade): number => {
+  const usual = grade.usual_score || 0
+  const exam = grade.exam_score || 0
+  const final = grade.final_score || 0
+
+  // 平时成绩30%，期中成绩30%，期末40%
+  const total = usual * 0.3 + exam * 0.3 + final * 0.4
+  return Math.round(total * 10) / 10
 }
 
 // 监听开课变化

@@ -15,9 +15,9 @@
     >
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="课程代码" prop="code">
+          <el-form-item label="课程代码" prop="course_code">
             <el-input
-              v-model="formData.code"
+              v-model="formData.course_code"
               placeholder="请输入课程代码"
               :disabled="isEdit"
             />
@@ -25,9 +25,9 @@
         </el-col>
 
         <el-col :span="12">
-          <el-form-item label="课程名称" prop="name">
+          <el-form-item label="课程名称" prop="course_name">
             <el-input
-              v-model="formData.name"
+              v-model="formData.course_name"
               placeholder="请输入课程名称"
             />
           </el-form-item>
@@ -36,16 +36,15 @@
 
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="课程类型" prop="type">
+          <el-form-item label="课程类型" prop="course_type">
             <el-select
-              v-model="formData.type"
+              v-model="formData.course_type"
               placeholder="请选择课程类型"
               style="width: 100%"
             >
-              <el-option label="必修课" value="REQUIRED" />
-              <el-option label="选修课" value="ELECTIVE" />
-              <el-option label="公共课" value="PUBLIC" />
-              <el-option label="专业课" value="PROFESSIONAL" />
+              <el-option label="必修" :value="CourseType.REQUIRED" />
+              <el-option label="选修" :value="CourseType.ELECTIVE" />
+              <el-option label="公选" :value="CourseType.PUBLIC_ELECTIVE" />
             </el-select>
           </el-form-item>
         </el-col>
@@ -78,22 +77,14 @@
         </el-col>
 
         <el-col :span="12">
-          <el-form-item label="先修课程" prop="prerequisiteIds">
+          <el-form-item label="状态" prop="status" v-if="isEdit">
             <el-select
-              v-model="formData.prerequisiteIds"
-              placeholder="请选择先修课程"
-              multiple
-              filterable
+              v-model="formData.status"
+              placeholder="请选择状态"
               style="width: 100%"
-              :loading="coursesLoading"
             >
-              <el-option
-                v-for="course in availableCourses"
-                :key="course.id"
-                :label="`${course.code} - ${course.name}`"
-                :value="course.id"
-                :disabled="course.id === courseId"
-              />
+              <el-option label="停用" :value="CourseStatus.INACTIVE" />
+              <el-option label="启用" :value="CourseStatus.ACTIVE" />
             </el-select>
           </el-form-item>
         </el-col>
@@ -116,60 +107,12 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import BaseModal from '@/components/common/BaseModal/index.vue'
 import { courseApi } from '@/api/modules/course'
-
-// 课程类型枚举
-enum CourseType {
-  REQUIRED = 'REQUIRED',
-  ELECTIVE = 'ELECTIVE',
-  PUBLIC = 'PUBLIC',
-  PROFESSIONAL = 'PROFESSIONAL'
-}
-
-// 课程状态枚举
-enum CourseStatus {
-  DRAFT = 'DRAFT',
-  PUBLISHED = 'PUBLISHED',
-  ARCHIVED = 'ARCHIVED'
-}
-
-// 课程接口
-interface Course {
-  id: number
-  name: string
-  code: string
-  credits: number
-  hours: number
-  type: CourseType
-  description?: string
-  prerequisiteIds?: number[]
-  prerequisites?: Course[]
-  status: CourseStatus
-  createdAt: string
-  updatedAt: string
-}
-
-// 创建课程数据
-interface CreateCourseData {
-  name: string
-  code: string
-  credits: number
-  hours: number
-  type: CourseType
-  description?: string
-  prerequisiteIds?: number[]
-}
-
-// 更新课程数据
-interface UpdateCourseData {
-  name?: string
-  code?: string
-  credits?: number
-  hours?: number
-  type?: CourseType
-  description?: string
-  prerequisiteIds?: number[]
-  status?: CourseStatus
-}
+import type {
+  Course,
+  CreateCourseData,
+  UpdateCourseData
+} from '@/types/database'
+import { CourseType, CourseStatus } from '@/types/database'
 
 interface Props {
   modelValue: boolean
@@ -198,29 +141,24 @@ const visible = computed({
 
 // 加载状态
 const loading = ref(false)
-const coursesLoading = ref(false)
-
-// 可选课程列表
-const availableCourses = ref<Course[]>([])
 
 // 表单数据
 const formData = reactive<CreateCourseData>({
-  name: '',
-  code: '',
+  course_code: '',
+  course_name: '',
   credits: 1,
   hours: 16,
-  type: CourseType.ELECTIVE,
+  course_type: CourseType.ELECTIVE,
   description: '',
-  prerequisiteIds: []
+  status: CourseStatus.ACTIVE
 })
 
 // 计算是否为编辑模式
 const isEdit = computed(() => !!props.course)
-const courseId = computed(() => props.course?.id)
 
 // 表单验证规则
 const formRules: FormRules = {
-  code: [
+  course_code: [
     { required: true, message: '请输入课程代码', trigger: 'blur' },
     { min: 2, max: 20, message: '课程代码长度为2-20个字符', trigger: 'blur' },
     {
@@ -229,11 +167,11 @@ const formRules: FormRules = {
       trigger: 'blur'
     }
   ],
-  name: [
+  course_name: [
     { required: true, message: '请输入课程名称', trigger: 'blur' },
     { min: 2, max: 50, message: '课程名称长度为2-50个字符', trigger: 'blur' }
   ],
-  type: [
+  course_type: [
     { required: true, message: '请选择课程类型', trigger: 'change' }
   ],
   credits: [
@@ -249,31 +187,16 @@ const formRules: FormRules = {
   ]
 }
 
-// 获取可选课程列表
-const fetchAvailableCourses = async () => {
-  try {
-    coursesLoading.value = true
-    const courses = await courseApi.getAllCourses()
-    availableCourses.value = courses.filter(course =>
-      course.status === CourseStatus.PUBLISHED
-    )
-  } catch (error) {
-    console.error('获取课程列表失败:', error)
-  } finally {
-    coursesLoading.value = false
-  }
-}
-
 // 重置表单
 const resetForm = () => {
   Object.assign(formData, {
-    name: '',
-    code: '',
+    course_code: '',
+    course_name: '',
     credits: 1,
     hours: 16,
-    type: CourseType.ELECTIVE,
+    course_type: CourseType.ELECTIVE,
     description: '',
-    prerequisiteIds: []
+    status: CourseStatus.ACTIVE
   })
   formRef.value?.resetFields()
 }
@@ -281,13 +204,13 @@ const resetForm = () => {
 // 填充表单数据
 const fillFormData = (course: Course) => {
   Object.assign(formData, {
-    name: course.name,
-    code: course.code,
+    course_code: course.course_code,
+    course_name: course.course_name,
     credits: course.credits,
     hours: course.hours,
-    type: course.type,
+    course_type: course.course_type,
     description: course.description || '',
-    prerequisiteIds: course.prerequisiteIds || []
+    status: course.status
   })
 }
 
@@ -302,18 +225,18 @@ const handleSubmit = async () => {
     if (isEdit.value && props.course) {
       // 编辑课程
       const updateData: UpdateCourseData = {
-        name: formData.name,
+        course_name: formData.course_name,
         credits: formData.credits,
         hours: formData.hours,
-        type: formData.type,
+        course_type: formData.course_type,
         description: formData.description,
-        prerequisiteIds: formData.prerequisiteIds
+        status: formData.status
       }
-      await courseApi.updateCourse(props.course.id, updateData)
+      await courseApi.update(props.course.course_id, updateData)
       ElMessage.success('更新课程成功')
     } else {
       // 新增课程
-      await courseApi.createCourse(formData)
+      await courseApi.create(formData)
       ElMessage.success('创建课程成功')
     }
 
@@ -349,16 +272,17 @@ watch(
 watch(
   () => props.modelValue,
   (show) => {
-    if (show && !props.course) {
-      resetForm()
+    if (show) {
+      if (props.course) {
+        // 编辑模式，填充数据
+        fillFormData(props.course)
+      } else {
+        // 新增模式，重置表单
+        resetForm()
+      }
     }
   }
 )
-
-// 页面加载时获取数据
-onMounted(() => {
-  fetchAvailableCourses()
-})
 </script>
 
 <style lang="scss" scoped>

@@ -20,8 +20,8 @@
       <el-form :model="queryForm" inline class="search-form">
         <el-form-item label="学生学号">
           <el-input
-            v-model="queryForm.studentId"
-            placeholder="请输入学生学号"
+            v-model="queryForm.student_id"
+            placeholder="请输入学生ID"
             clearable
             style="width: 200px"
           />
@@ -33,13 +33,13 @@
             clearable
             style="width: 120px"
           >
-            <el-option label="奖励" value="REWARD" />
-            <el-option label="处分" value="PUNISHMENT" />
+            <el-option label="奖励" value="奖励" />
+            <el-option label="惩罚" value="惩罚" />
           </el-select>
         </el-form-item>
         <el-form-item label="等级">
           <el-select
-            v-model="queryForm.level"
+            v-model="queryForm.category"
             placeholder="请选择等级"
             clearable
             style="width: 150px"
@@ -62,17 +62,6 @@
             style="width: 240px"
           />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select
-            v-model="queryForm.isActive"
-            placeholder="请选择状态"
-            clearable
-            style="width: 120px"
-          >
-            <el-option label="有效" :value="true" />
-            <el-option label="已撤销" :value="false" />
-          </el-select>
-        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>
@@ -94,32 +83,25 @@
         stripe
         style="width: 100%"
       >
-        <el-table-column prop="student.studentId" label="学号" width="120" />
-        <el-table-column prop="student.user.realName" label="姓名" width="100" />
+        <el-table-column prop="student.student_no" label="学号" width="120" />
+        <el-table-column prop="student.user.real_name" label="姓名" width="100" />
         <el-table-column prop="type" label="类型" width="80">
           <template #default="{ row }">
-            <el-tag :type="row.type === 'REWARD' ? 'success' : 'danger'">
-              {{ row.type === 'REWARD' ? '奖励' : '处分' }}
+            <el-tag :type="row.type === '奖励' ? 'success' : 'danger'">
+              {{ row.type }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="level" label="等级" width="120">
+        <el-table-column prop="category" label="等级" width="120">
           <template #default="{ row }">
-            <el-tag :type="getLevelTagType(row.level as keyof typeof levelOptions)">
-              {{ levelOptions[row.level as keyof typeof levelOptions] }}
+            <el-tag :type="getLevelTagType(row.category)">
+              {{ levelOptions[row.category] || row.category }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="标题" show-overflow-tooltip />
-        <el-table-column prop="reason" label="原因" show-overflow-tooltip />
-        <el-table-column prop="date" label="处理日期" width="120" />
-        <el-table-column prop="processor.realName" label="处理人" width="100" />
-        <el-table-column label="状态" width="80">
-          <template #default="{ row }">
-            <el-tag v-if="row.isActive" type="success">有效</el-tag>
-            <el-tag v-else type="info">已撤销</el-tag>
-          </template>
-        </el-table-column>
+        <el-table-column prop="description" label="描述" show-overflow-tooltip />
+        <el-table-column prop="occur_date" label="处理日期" width="120" />
+        <el-table-column prop="handler.real_name" label="处理人" width="100" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button
@@ -136,17 +118,9 @@
             >
               编辑
             </el-button>
-            <el-button
-              v-if="row.isActive"
-              type="warning"
-              size="small"
-              @click="handleRevoke(row)"
-            >
-              撤销
-            </el-button>
             <el-popconfirm
               title="确定删除此记录吗？"
-              @confirm="handleDelete(row.id)"
+              @confirm="handleDelete(row.record_id)"
             >
               <template #reference>
                 <el-button
@@ -188,32 +162,21 @@
         :rules="formRules"
         label-width="120px"
       >
-        <el-form-item label="学生" prop="studentId">
-          <el-select
-            v-model="formData.studentId"
-            placeholder="请选择学生"
-            filterable
-            remote
-            :remote-method="searchStudents"
-            :loading="studentLoading"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="student in studentOptions"
-              :key="student.id"
-              :label="`${student.studentId} - ${student.user.realName}`"
-              :value="student.id"
-            />
-          </el-select>
+        <el-form-item label="学生" prop="student_id">
+          <UserSelector
+            v-model="formData.student_id"
+            user-type="student"
+            @change="handleStudentChange"
+          />
         </el-form-item>
         <el-form-item label="奖惩类型" prop="type">
           <el-radio-group v-model="formData.type">
-            <el-radio label="REWARD">奖励</el-radio>
-            <el-radio label="PUNISHMENT">处分</el-radio>
+            <el-radio label="奖励">奖励</el-radio>
+            <el-radio label="惩罚">惩罚</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="等级" prop="level">
-          <el-select v-model="formData.level" style="width: 100%">
+        <el-form-item label="等级" prop="category">
+          <el-select v-model="formData.category" style="width: 100%">
             <el-option
               v-for="(label, value) in filteredLevelOptions"
               :key="value"
@@ -222,31 +185,20 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入标题" />
-        </el-form-item>
-        <el-form-item label="详细原因" prop="reason">
+        <el-form-item label="详细描述" prop="description">
           <el-input
-            v-model="formData.reason"
+            v-model="formData.description"
             type="textarea"
             :rows="4"
-            placeholder="请输入详细原因"
+            placeholder="请输入详细描述"
           />
         </el-form-item>
-        <el-form-item label="处理日期" prop="date">
+        <el-form-item label="处理日期" prop="occur_date">
           <el-date-picker
-            v-model="formData.date"
+            v-model="formData.occur_date"
             type="date"
             placeholder="请选择处理日期"
             style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input
-            v-model="formData.remarks"
-            type="textarea"
-            :rows="2"
-            placeholder="请输入备注"
           />
         </el-form-item>
       </el-form>
@@ -266,42 +218,32 @@
     >
       <el-descriptions v-if="currentItem" :column="2" border>
         <el-descriptions-item label="学号">
-          {{ currentItem.student?.studentId }}
+          {{ currentItem.student?.student_no }}
         </el-descriptions-item>
         <el-descriptions-item label="姓名">
-          {{ currentItem.student?.user?.realName }}
+          {{ currentItem.student?.user?.real_name }}
         </el-descriptions-item>
         <el-descriptions-item label="类型">
-          <el-tag :type="currentItem.type === 'REWARD' ? 'success' : 'danger'">
-            {{ currentItem.type === 'REWARD' ? '奖励' : '处分' }}
+          <el-tag :type="currentItem.type === '奖励' ? 'success' : 'danger'">
+            {{ currentItem.type }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="等级">
-          <el-tag :type="getLevelTagType(currentItem.level as keyof typeof levelOptions)">
-            {{ levelOptions[currentItem.level as keyof typeof levelOptions] }}
+          <el-tag :type="getLevelTagType(currentItem.category)">
+            {{ levelOptions[currentItem.category] || currentItem.category }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="标题" :span="2">
-          {{ currentItem.title }}
-        </el-descriptions-item>
-        <el-descriptions-item label="详细原因" :span="2">
-          {{ currentItem.reason }}
+        <el-descriptions-item label="详细描述" :span="2">
+          {{ currentItem.description }}
         </el-descriptions-item>
         <el-descriptions-item label="处理日期">
-          {{ currentItem.date }}
+          {{ currentItem.occur_date }}
         </el-descriptions-item>
         <el-descriptions-item label="处理人">
-          {{ currentItem.processor?.realName }}
-        </el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <el-tag v-if="currentItem.isActive" type="success">有效</el-tag>
-          <el-tag v-else type="info">已撤销</el-tag>
+          {{ currentItem.handler?.real_name }}
         </el-descriptions-item>
         <el-descriptions-item label="创建时间">
-          {{ currentItem.createdAt }}
-        </el-descriptions-item>
-        <el-descriptions-item label="备注" :span="2">
-          {{ currentItem.remarks || '-' }}
+          {{ currentItem.created_at }}
         </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
@@ -342,7 +284,7 @@
                   :key="level"
                   class="level-stat"
                 >
-                  <span>{{ levelOptions[level as keyof typeof levelOptions] }}:</span>
+                  <span>{{ levelOptions[String(level)] || level }}:</span>
                   <span class="count">{{ count }}</span>
                 </div>
               </div>
@@ -360,7 +302,7 @@
               :key="level"
               class="level-stat"
             >
-              <span>{{ levelOptions[level as keyof typeof levelOptions] }}:</span>
+              <span>{{ levelOptions[String(level)] || level }}:</span>
               <span class="count">{{ count }}</span>
             </div>
           </div>
@@ -393,35 +335,34 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { Plus, Search, Refresh, DataLine } from '@element-plus/icons-vue'
-import { rewardPunishmentApi } from '@/api/modules/student'
+import { rewardPunishmentApi } from '@/api/modules/reward-punishment'
 import { userApi } from '@/api/modules/user'
 import type {
   RewardPunishment,
   RewardPunishmentQuery,
   CreateRewardPunishmentData,
-  UpdateRewardPunishmentData,
-  RewardPunishmentType,
-  RewardPunishmentLevel,
-  RewardPunishmentStatistics
-} from '@/types/student'
-import type { Student, User, Role } from '@/types/user'
+  UpdateRewardPunishmentData
+} from '@/types/database'
+import { RewardPunishmentType } from '@/types/database'
+import type { User } from '@/types/database'
+import UserSelector from '@/components/business/UserSelector/index.vue'
 
 // 等级选项
-const levelOptions: Record<RewardPunishmentLevel, string> = {
+const levelOptions: Record<string, string> = {
   // 奖励等级
-  PRAISE: '表扬',
-  MERIT: '嘉奖',
-  THIRD_CLASS_MERIT: '三等功',
-  SECOND_CLASS_MERIT: '二等功',
-  FIRST_CLASS_MERIT: '一等功',
+  'PRAISE': '表扬',
+  'MERIT': '嘉奖',
+  'THIRD_CLASS_MERIT': '三等功',
+  'SECOND_CLASS_MERIT': '二等功',
+  'FIRST_CLASS_MERIT': '一等功',
 
   // 处分等级
-  WARNING: '警告',
-  SERIOUS_WARNING: '严重警告',
-  DEMERIT: '记过',
-  SERIOUS_DEMERIT: '记大过',
-  PROBATION: '留校察看',
-  EXPULSION: '开除学籍'
+  'WARNING': '警告',
+  'SERIOUS_WARNING': '严重警告',
+  'DEMERIT': '记过',
+  'SERIOUS_DEMERIT': '记大过',
+  'PROBATION': '留校察看',
+  'EXPULSION': '开除学籍'
 }
 
 // 响应式数据
@@ -433,10 +374,8 @@ const statisticsDialogVisible = ref(false)
 const editingItem = ref<RewardPunishment | null>(null)
 const currentItem = ref<RewardPunishment | null>(null)
 const submitting = ref(false)
-const studentLoading = ref(false)
 const statisticsLoading = ref(false)
-const studentOptions = ref<Student[]>([])
-const statistics = ref<RewardPunishmentStatistics | null>(null)
+const statistics = ref<any | null>(null)
 
 // 搜索表单
 const queryForm = reactive<RewardPunishmentQuery>({
@@ -455,13 +394,11 @@ const pagination = reactive({
 
 // 表单数据
 const formData = reactive<CreateRewardPunishmentData>({
-  studentId: 0,
-  type: 'REWARD' as RewardPunishmentType,
-  level: 'PRAISE' as RewardPunishmentLevel,
-  title: '',
-  reason: '',
-  date: '',
-  remarks: ''
+  student_id: 0,
+  type: RewardPunishmentType.REWARD,
+  category: 'PRAISE',
+  description: '',
+  occur_date: new Date().toISOString().split('T')[0]
 })
 
 // 表单引用
@@ -469,17 +406,16 @@ const formRef = ref<FormInstance>()
 
 // 表单验证规则
 const formRules = {
-  studentId: [{ required: true, message: '请选择学生', trigger: 'change' }],
+  student_id: [{ required: true, message: '请选择学生', trigger: 'change' }],
   type: [{ required: true, message: '请选择奖惩类型', trigger: 'change' }],
-  level: [{ required: true, message: '请选择等级', trigger: 'change' }],
-  title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
-  reason: [{ required: true, message: '请输入详细原因', trigger: 'blur' }],
-  date: [{ required: true, message: '请选择处理日期', trigger: 'change' }]
+  category: [{ required: true, message: '请选择等级', trigger: 'change' }],
+  description: [{ required: true, message: '请输入详细描述', trigger: 'blur' }],
+  occur_date: [{ required: true, message: '请选择处理日期', trigger: 'change' }]
 }
 
 // 计算属性
 const filteredLevelOptions = computed(() => {
-  if (formData.type === 'REWARD') {
+  if (formData.type === RewardPunishmentType.REWARD) {
     return {
       PRAISE: levelOptions.PRAISE,
       MERIT: levelOptions.MERIT,
@@ -499,39 +435,13 @@ const filteredLevelOptions = computed(() => {
   }
 })
 
-const getLevelTagType = (level: RewardPunishmentLevel) => {
+const getLevelTagType = (level: string) => {
   if (['PRAISE', 'MERIT', 'THIRD_CLASS_MERIT', 'SECOND_CLASS_MERIT', 'FIRST_CLASS_MERIT'].includes(level)) {
     return 'success'
   } else if (['WARNING', 'SERIOUS_WARNING'].includes(level)) {
     return 'warning'
   } else {
     return 'danger'
-  }
-}
-
-// 搜索学生
-const searchStudents = async (query: string) => {
-  if (!query) return
-
-  studentLoading.value = true
-  try {
-    const response = await userApi.getUsers({
-      page: 1,
-      pageSize: 20,
-      username: query
-    })
-    // 过滤出学生用户
-    studentOptions.value = response.list.filter((user: User) =>
-      user.roles.some((role: Role) => role.code === 'STUDENT')
-    ).map((user: User) => ({
-      id: user.id,
-      studentId: user.username,
-      user
-    })) as Student[]
-  } catch (error) {
-    console.error('搜索学生失败:', error)
-  } finally {
-    studentLoading.value = false
   }
 }
 
@@ -547,13 +457,13 @@ const fetchRewardPunishments = async () => {
 
     // 处理日期范围
     if (dateRange.value) {
-      params.startDate = dateRange.value[0].toISOString().split('T')[0]
-      params.endDate = dateRange.value[1].toISOString().split('T')[0]
+      params.start_date = dateRange.value[0].toISOString().split('T')[0]
+      params.end_date = dateRange.value[1].toISOString().split('T')[0]
     }
 
-    const response = await rewardPunishmentApi.getRewardPunishments(params)
-    rewardPunishmentList.value = response.list
-    pagination.total = response.total
+    const response = await rewardPunishmentApi.getList(params)
+    rewardPunishmentList.value = response.data.list
+    pagination.total = response.data.total
   } catch (error) {
     console.error('获取奖惩记录列表失败:', error)
     ElMessage.error('获取奖惩记录列表失败')
@@ -585,12 +495,11 @@ const handleSearch = () => {
 // 重置搜索
 const handleReset = () => {
   Object.assign(queryForm, {
-    studentId: undefined,
+    student_id: undefined,
     type: undefined,
-    level: undefined,
-    startDate: undefined,
-    endDate: undefined,
-    isActive: undefined
+    category: undefined,
+    start_date: undefined,
+    end_date: undefined
   })
   dateRange.value = null
   handleSearch()
@@ -618,39 +527,19 @@ const handleView = (item: RewardPunishment) => {
 const handleEdit = (item: RewardPunishment) => {
   editingItem.value = item
   Object.assign(formData, {
-    studentId: item.studentId,
+    student_id: item.student_id,
     type: item.type,
-    level: item.level,
-    title: item.title,
-    reason: item.reason,
-    date: item.date,
-    remarks: item.remarks || ''
+    category: item.category,
+    description: item.description || '',
+    occur_date: item.occur_date
   })
   dialogVisible.value = true
-}
-
-// 撤销
-const handleRevoke = async (item: RewardPunishment) => {
-  try {
-    await ElMessageBox.confirm('确定撤销此奖惩记录吗？', '确认撤销', {
-      type: 'warning'
-    })
-
-    await rewardPunishmentApi.updateRewardPunishment(item.id, { isActive: false })
-    ElMessage.success('撤销成功')
-    fetchRewardPunishments()
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('撤销失败:', error)
-      ElMessage.error('撤销失败')
-    }
-  }
 }
 
 // 删除
 const handleDelete = async (id: number) => {
   try {
-    await rewardPunishmentApi.deleteRewardPunishment(id)
+    await rewardPunishmentApi.delete(id)
     ElMessage.success('删除成功')
     fetchRewardPunishments()
   } catch (error) {
@@ -669,10 +558,10 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     if (editingItem.value) {
-      await rewardPunishmentApi.updateRewardPunishment(editingItem.value.id, formData)
+      await rewardPunishmentApi.update(editingItem.value.record_id, formData)
       ElMessage.success('更新成功')
     } else {
-      await rewardPunishmentApi.createRewardPunishment(formData)
+      await rewardPunishmentApi.create(formData)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
@@ -691,14 +580,18 @@ const resetForm = () => {
     formRef.value.resetFields()
   }
   Object.assign(formData, {
-    studentId: 0,
-    type: 'REWARD' as RewardPunishmentType,
-    level: 'PRAISE' as RewardPunishmentLevel,
-    title: '',
-    reason: '',
-    date: '',
-    remarks: ''
+    student_id: 0,
+    type: RewardPunishmentType.REWARD,
+    category: 'PRAISE',
+    description: '',
+    occur_date: new Date().toISOString().split('T')[0]
   })
+}
+
+// 处理学生选择变化
+const handleStudentChange = (user?: User) => {
+  // 这里可以在选择学生时执行一些额外的逻辑
+  console.log('选择的学生:', user)
 }
 
 // 初始化

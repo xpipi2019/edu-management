@@ -16,10 +16,10 @@
 
         <el-descriptions :column="2" border>
           <el-descriptions-item label="课程代码">
-            {{ offering.course?.code }}
+            {{ offering.course?.course_code }}
           </el-descriptions-item>
           <el-descriptions-item label="课程名称">
-            {{ offering.course?.name }}
+            {{ offering.course?.course_name }}
           </el-descriptions-item>
           <el-descriptions-item label="学分">
             {{ offering.course?.credits }}
@@ -28,8 +28,8 @@
             {{ offering.course?.hours }}
           </el-descriptions-item>
           <el-descriptions-item label="课程类型">
-            <el-tag :type="getCourseTypeColor(offering.course?.type)" size="small">
-              {{ getCourseTypeText(offering.course?.type) }}
+            <el-tag :type="getCourseTypeColor(offering.course?.course_type)" size="small">
+              {{ getCourseTypeText(offering.course?.course_type) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="状态">
@@ -53,20 +53,20 @@
             {{ offering.semester }}
           </el-descriptions-item>
           <el-descriptions-item label="学年">
-            {{ offering.academicYear }}
+            {{ getAcademicYear(offering.semester) }}
           </el-descriptions-item>
           <el-descriptions-item label="任课教师">
-            {{ offering.teacher?.user?.realName }}
+            {{ offering.teacher?.user?.real_name }}
           </el-descriptions-item>
           <el-descriptions-item label="教室">
-            {{ offering.classroom || '-' }}
+            {{ getClassroomInfo(offering) }}
           </el-descriptions-item>
           <el-descriptions-item label="容量">
-            {{ offering.maxStudents }}
+            {{ offering.max_students }}
           </el-descriptions-item>
           <el-descriptions-item label="已选人数">
-            <span :class="{ 'text-danger': offering.currentStudents >= offering.maxStudents }">
-              {{ offering.currentStudents }}
+            <span :class="{ 'text-danger': offering.current_students >= offering.max_students }">
+              {{ offering.current_students }}
             </span>
           </el-descriptions-item>
         </el-descriptions>
@@ -81,31 +81,8 @@
         </template>
 
         <div class="schedule-grid">
-          <div v-if="offering.schedules && offering.schedules.length > 0">
-            <div
-              v-for="schedule in offering.schedules"
-              :key="schedule.id"
-              class="schedule-item"
-            >
-              <div class="schedule-time">
-                <el-icon><Clock /></el-icon>
-                <span>
-                  周{{ getDayText(schedule.dayOfWeek) }}
-                  第{{ schedule.startTime }}-{{ schedule.endTime }}节
-                </span>
-              </div>
-              <div class="schedule-location">
-                <el-icon><Location /></el-icon>
-                <span>{{ schedule.classroom || offering.classroom || '-' }}</span>
-              </div>
-              <div class="schedule-weeks">
-                <el-icon><Calendar /></el-icon>
-                <span>第{{ getWeeksText(schedule.weeks) }}周</span>
-              </div>
-            </div>
-          </div>
-          <div v-else class="no-schedule">
-            <el-empty description="暂无排课信息" />
+          <div class="no-schedule">
+            <el-empty description="排课信息需要从排课模块获取" />
           </div>
         </div>
       </el-card>
@@ -120,27 +97,6 @@
 
         <div class="course-description">
           {{ offering.course.description }}
-        </div>
-      </el-card>
-
-      <!-- 先修课程 -->
-      <el-card class="info-section" shadow="never" v-if="offering.course?.prerequisites && offering.course.prerequisites.length > 0">
-        <template #header>
-          <div class="section-header">
-            <span>先修课程</span>
-          </div>
-        </template>
-
-        <div class="prerequisites">
-          <el-tag
-            v-for="prerequisite in offering.course.prerequisites"
-            :key="prerequisite.id"
-            type="info"
-            size="small"
-            class="prerequisite-tag"
-          >
-            {{ prerequisite.code }} - {{ prerequisite.name }}
-          </el-tag>
         </div>
       </el-card>
 
@@ -161,7 +117,7 @@
                 </el-icon>
               </div>
               <div class="stat-content">
-                <div class="stat-value">{{ offering.currentStudents }}</div>
+                <div class="stat-value">{{ offering.current_students }}</div>
                 <div class="stat-label">选课人数</div>
               </div>
             </div>
@@ -221,19 +177,11 @@
 
         <el-timeline>
           <el-timeline-item
-            timestamp="创建时间"
-            :time="formatDateTime(offering.createdAt)"
+            timestamp="开课时间"
+            time="学期开始"
             color="#909399"
           >
             开课创建
-          </el-timeline-item>
-          <el-timeline-item
-            v-if="offering.updatedAt !== offering.createdAt"
-            timestamp="更新时间"
-            :time="formatDateTime(offering.updatedAt)"
-            color="#409eff"
-          >
-            开课信息更新
           </el-timeline-item>
         </el-timeline>
       </el-card>
@@ -245,8 +193,8 @@
 import { computed } from 'vue'
 import { Clock, Location, Calendar, User, DocumentChecked, Star, Timer } from '@element-plus/icons-vue'
 import BaseModal from '@/components/common/BaseModal/index.vue'
-import { CourseType, OfferingStatus } from '@/types/course'
-import type { CourseOffering } from '@/types/course'
+import { CourseType, OfferingStatus } from '@/types/database'
+import type { CourseOffering } from '@/types/database'
 
 interface Props {
   modelValue: boolean
@@ -280,6 +228,16 @@ const formatDateTime = (date: string | Date | null | undefined): string => {
     minute: '2-digit',
     second: '2-digit'
   })
+}
+
+const getAcademicYear = (semester: string): string => {
+  // 从学期信息中提取学年，这里暂时返回固定值
+  return '2024-2025'
+}
+
+const getClassroomInfo = (offering?: CourseOffering | null): string => {
+  // 从排课信息中获取教室信息
+  return '待定'
 }
 
 const getDayText = (dayOfWeek: number): string => {
@@ -319,58 +277,42 @@ const getWeeksText = (weeks: number[]): string => {
 }
 
 const getCourseTypeColor = (type?: CourseType) => {
-  const colorMap = {
+  const colorMap: Record<string, string> = {
     [CourseType.REQUIRED]: 'danger',
     [CourseType.ELECTIVE]: 'primary',
-    [CourseType.PUBLIC]: 'success',
-    [CourseType.PROFESSIONAL]: 'warning'
+    [CourseType.PUBLIC_ELECTIVE]: 'success'
   }
   return colorMap[type!] || 'info'
 }
 
 const getCourseTypeText = (type?: CourseType) => {
-  const textMap = {
+  const textMap: Record<string, string> = {
     [CourseType.REQUIRED]: '必修课',
     [CourseType.ELECTIVE]: '选修课',
-    [CourseType.PUBLIC]: '公共课',
-    [CourseType.PROFESSIONAL]: '专业课'
+    [CourseType.PUBLIC_ELECTIVE]: '公选课'
   }
   return textMap[type!] || '未知'
 }
 
 const getOfferingStatusColor = (status: OfferingStatus) => {
-  const colorMap = {
-    [OfferingStatus.DRAFT]: 'info',
-    [OfferingStatus.PENDING]: 'warning',
-    [OfferingStatus.APPROVED]: 'success',
-    [OfferingStatus.PUBLISHED]: 'success',
-    [OfferingStatus.ENROLLMENT]: 'primary',
-    [OfferingStatus.TEACHING]: 'warning',
-    [OfferingStatus.COMPLETED]: '',
-    [OfferingStatus.CANCELLED]: 'danger',
-    [OfferingStatus.REJECTED]: 'danger'
+  const colorMap: Record<number, string> = {
+    [OfferingStatus.INACTIVE]: 'info',
+    [OfferingStatus.ACTIVE]: 'success'
   }
   return colorMap[status] || 'info'
 }
 
 const getOfferingStatusText = (status: OfferingStatus) => {
-  const textMap = {
-    [OfferingStatus.DRAFT]: '草稿',
-    [OfferingStatus.PENDING]: '待审核',
-    [OfferingStatus.APPROVED]: '已批准',
-    [OfferingStatus.PUBLISHED]: '已发布',
-    [OfferingStatus.ENROLLMENT]: '选课中',
-    [OfferingStatus.TEACHING]: '教学中',
-    [OfferingStatus.COMPLETED]: '已完成',
-    [OfferingStatus.CANCELLED]: '已取消',
-    [OfferingStatus.REJECTED]: '已拒绝'
+  const textMap: Record<number, string> = {
+    [OfferingStatus.INACTIVE]: '未开放',
+    [OfferingStatus.ACTIVE]: '开放中'
   }
   return textMap[status] || '未知'
 }
 
 const getEnrollmentRate = (): number => {
   if (!props.offering) return 0
-  return Math.round((props.offering.currentStudents / props.offering.maxStudents) * 100)
+  return Math.round((props.offering.current_students / props.offering.max_students) * 100)
 }
 </script>
 

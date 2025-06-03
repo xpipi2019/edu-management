@@ -17,7 +17,7 @@
       >
         <el-form-item label="角色名称">
           <el-input
-            v-model="searchForm.name"
+            v-model="searchForm.role_name"
             placeholder="请输入角色名称"
             clearable
             style="width: 200px"
@@ -27,7 +27,7 @@
 
         <el-form-item label="角色代码">
           <el-input
-            v-model="searchForm.code"
+            v-model="searchForm.role_code"
             placeholder="请输入角色代码"
             clearable
             style="width: 200px"
@@ -62,9 +62,9 @@
         @page-change="handlePageChange"
         @size-change="handleSizeChange"
       >
-        <el-table-column prop="name" label="角色名称" min-width="120" />
+        <el-table-column prop="role_name" label="角色名称" min-width="120" />
 
-        <el-table-column prop="code" label="角色代码" min-width="120" />
+        <el-table-column prop="role_code" label="角色代码" min-width="120" />
 
         <el-table-column prop="description" label="描述" min-width="200">
           <template #default="{ row }">
@@ -78,9 +78,9 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="createdAt" label="创建时间" width="180">
+        <el-table-column prop="created_at" label="创建时间" width="180">
           <template #default="{ row }">
-            {{ formatDateTime(row.createdAt) }}
+            {{ formatDateTime(row.created_at) }}
           </template>
         </el-table-column>
 
@@ -121,7 +121,7 @@
       v-model="showRoleForm"
       :title="isEdit ? '编辑角色' : '新增角色'"
       width="600px"
-      :before-close="handleFormClose"
+      :before-close="handleFormBeforeClose"
     >
       <el-form
         ref="roleFormRef"
@@ -161,7 +161,7 @@
       </el-form>
 
       <template #footer>
-        <el-button @click="handleFormClose">取消</el-button>
+        <el-button @click="handleFormCancel">取消</el-button>
         <el-button type="primary" @click="handleFormSubmit" :loading="submitLoading">
           确定
         </el-button>
@@ -172,48 +172,64 @@
     <el-dialog
       v-model="showPermissionDialog"
       title="分配权限"
-      width="800px"
-      :before-close="handlePermissionDialogClose"
+      width="900px"
+      :before-close="handlePermissionBeforeClose"
+      class="permission-dialog"
     >
       <div class="permission-assignment">
         <div class="permission-info">
-          <p><strong>角色：</strong>{{ currentRole?.name }}</p>
-          <p><strong>代码：</strong>{{ currentRole?.code }}</p>
+          <p><strong>角色：</strong>{{ currentRole?.role_name }}</p>
+          <p><strong>代码：</strong>{{ currentRole?.role_code }}</p>
         </div>
 
         <el-divider />
 
-        <div class="permission-tree">
-          <h4>权限列表</h4>
-          <div v-loading="permissionLoading" style="min-height: 300px">
-            <div
-              v-for="(permissions, module) in permissionsByModule"
-              :key="module"
-              class="permission-module"
-            >
-              <div class="module-header">
-                <el-checkbox
-                  :model-value="isModuleAllSelected(module)"
-                  :indeterminate="isModuleIndeterminate(module)"
-                  @change="handleModuleSelect($event, module)"
-                >
-                  <strong>{{ module }}</strong>
-                </el-checkbox>
-              </div>
+        <div class="permission-container">
+          <div class="permission-header">
+            <h4>权限列表</h4>
+            <div class="permission-stats">
+              <span>已选择 {{ selectedPermissions.length }} 项权限</span>
+            </div>
+          </div>
 
-              <div class="module-permissions">
-                <el-checkbox-group v-model="selectedPermissions">
-                  <div
-                    v-for="permission in permissions"
-                    :key="permission.id"
-                    class="permission-item"
+          <div class="permission-tree-wrapper" v-loading="permissionLoading">
+            <div class="permission-tree">
+              <div
+                v-for="(permissions, module) in permissionsByModule"
+                :key="module"
+                class="permission-module"
+              >
+                <div class="module-header">
+                  <el-checkbox
+                    :model-value="isModuleAllSelected(module)"
+                    :indeterminate="isModuleIndeterminate(module)"
+                    @change="handleModuleSelect($event, module)"
+                    class="module-checkbox"
                   >
-                    <el-checkbox :label="permission.id">
-                      {{ permission.name }}
-                      <span class="permission-desc">{{ permission.description }}</span>
-                    </el-checkbox>
-                  </div>
-                </el-checkbox-group>
+                    <span class="module-name">{{ module }}</span>
+                    <span class="module-count">{{ Array.isArray(permissions) ? permissions.length : 0 }}项权限</span>
+                  </el-checkbox>
+                </div>
+
+                <div class="module-permissions" v-if="Array.isArray(permissions)">
+                  <el-checkbox-group v-model="selectedPermissions">
+                    <div
+                      v-for="permission in permissions"
+                      :key="permission.permission_id"
+                      class="permission-item"
+                    >
+                      <el-checkbox :value="permission.permission_id" class="permission-checkbox">
+                        <div class="permission-content">
+                          <span class="permission-name">{{ permission.permission_name }}</span>
+                          <span class="permission-code">({{ permission.permission_code }})</span>
+                          <div class="permission-desc" v-if="permission.description">
+                            {{ permission.description }}
+                          </div>
+                        </div>
+                      </el-checkbox>
+                    </div>
+                  </el-checkbox-group>
+                </div>
               </div>
             </div>
           </div>
@@ -221,7 +237,7 @@
       </div>
 
       <template #footer>
-        <el-button @click="handlePermissionDialogClose">取消</el-button>
+        <el-button @click="handlePermissionCancel">取消</el-button>
         <el-button type="primary" @click="handlePermissionSubmit" :loading="submitLoading">
           确定
         </el-button>
@@ -236,7 +252,7 @@ import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { roleApi } from '@/api/modules/role'
 import { permissionApi } from '@/api/modules/permission'
-import type { Role, Permission, RoleQuery, CreateRoleData, UpdateRoleData } from '@/types/user'
+import type { Role, Permission, RoleQuery, CreateRoleData, UpdateRoleData } from '@/types/database'
 import BaseTable from '@/components/common/BaseTable/index.vue'
 
 // 表单引用
@@ -256,8 +272,8 @@ const permissionsByModule = ref<Record<string, Permission[]>>({})
 
 // 搜索表单
 const searchForm = reactive<RoleQuery>({
-  name: '',
-  code: '',
+  role_name: '',
+  role_code: '',
   page: 1,
   pageSize: 10
 })
@@ -272,7 +288,12 @@ const queryParams = reactive({
 const showRoleForm = ref(false)
 const isEdit = ref(false)
 const currentRole = ref<Role | null>(null)
-const roleForm = reactive<CreateRoleData>({
+const roleForm = reactive<{
+  name: string;
+  code: string;
+  description: string;
+  permissionIds: number[]
+}>({
   name: '',
   code: '',
   description: '',
@@ -299,12 +320,18 @@ const roleFormRules = {
 // 计算属性
 const isModuleAllSelected = (module: string) => {
   const modulePermissions = permissionsByModule.value[module] || []
-  return modulePermissions.length > 0 && modulePermissions.every(p => selectedPermissions.value.includes(p.id))
+  if (!Array.isArray(modulePermissions)) {
+    return false
+  }
+  return modulePermissions.length > 0 && modulePermissions.every(p => selectedPermissions.value.includes(p.permission_id))
 }
 
 const isModuleIndeterminate = (module: string) => {
   const modulePermissions = permissionsByModule.value[module] || []
-  const selectedCount = modulePermissions.filter(p => selectedPermissions.value.includes(p.id)).length
+  if (!Array.isArray(modulePermissions)) {
+    return false
+  }
+  const selectedCount = modulePermissions.filter(p => selectedPermissions.value.includes(p.permission_id)).length
   return selectedCount > 0 && selectedCount < modulePermissions.length
 }
 
@@ -317,9 +344,9 @@ const fetchRoles = async () => {
       page: queryParams.page,
       pageSize: queryParams.pageSize
     }
-    const response = await roleApi.getRoles(params)
-    roleList.value = response.list
-    total.value = response.total
+    const response = await roleApi.getList(params)
+    roleList.value = response.data.list
+    total.value = response.data.total
   } catch (error) {
     ElMessage.error('获取角色列表失败')
     console.error('Failed to fetch roles:', error)
@@ -332,11 +359,14 @@ const fetchPermissions = async () => {
   try {
     permissionLoading.value = true
     const [allPermsResponse, modulePermsResponse] = await Promise.all([
-      permissionApi.getAllPermissions(),
-      permissionApi.getPermissionsByModule()
+      permissionApi.getAll(),
+      permissionApi.getByModule()
     ])
-    allPermissions.value = allPermsResponse
-    permissionsByModule.value = modulePermsResponse
+    allPermissions.value = allPermsResponse.data
+
+    if (modulePermsResponse.data) {
+      permissionsByModule.value = modulePermsResponse.data
+    }
   } catch (error) {
     ElMessage.error('获取权限列表失败')
     console.error('Failed to fetch permissions:', error)
@@ -353,8 +383,8 @@ const handleSearch = () => {
 const handleReset = () => {
   searchFormRef.value?.resetFields()
   Object.assign(searchForm, {
-    name: '',
-    code: '',
+    role_name: '',
+    role_code: '',
     page: 1,
     pageSize: 10
   })
@@ -389,10 +419,10 @@ const handleEdit = (role: Role) => {
   isEdit.value = true
   currentRole.value = role
   Object.assign(roleForm, {
-    name: role.name,
-    code: role.code,
+    name: role.role_name,
+    code: role.role_code,
     description: role.description || '',
-    permissionIds: role.permissions?.map(p => p.id) || []
+    permissionIds: role.permissions?.map((p: any) => p.permission_id) || []
   })
   showRoleForm.value = true
 }
@@ -400,7 +430,7 @@ const handleEdit = (role: Role) => {
 const handleDelete = async (role: Role) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除角色"${role.name}"吗？`,
+      `确定要删除角色"${role.role_name}"吗？`,
       '确认删除',
       {
         confirmButtonText: '确定',
@@ -409,7 +439,7 @@ const handleDelete = async (role: Role) => {
       }
     )
 
-    await roleApi.deleteRole(role.id)
+    await roleApi.delete(role.role_id)
     ElMessage.success('删除成功')
     fetchRoles()
   } catch (error: any) {
@@ -420,6 +450,27 @@ const handleDelete = async (role: Role) => {
   }
 }
 
+const handleFormBeforeClose = () => {
+  // 立即清空表单数据，避免关闭时闪烁
+  Object.assign(roleForm, {
+    name: '',
+    code: '',
+    description: '',
+    permissionIds: []
+  })
+  // 重置表单验证状态
+  roleFormRef.value?.resetFields()
+  // 清空当前角色引用
+  currentRole.value = null
+  isEdit.value = false
+  // 关闭弹窗
+  showRoleForm.value = false
+}
+
+const handleFormCancel = () => {
+  handleFormBeforeClose()
+}
+
 const handleFormSubmit = async () => {
   if (!roleFormRef.value) return
 
@@ -428,14 +479,23 @@ const handleFormSubmit = async () => {
     submitLoading.value = true
 
     if (isEdit.value && currentRole.value) {
-      await roleApi.updateRole(currentRole.value.id, roleForm)
+      const updateData: UpdateRoleData = {
+        role_name: roleForm.name,
+        description: roleForm.description
+      }
+      await roleApi.update(currentRole.value.role_id, updateData)
       ElMessage.success('更新成功')
     } else {
-      await roleApi.createRole(roleForm)
+      const createData: CreateRoleData = {
+        role_name: roleForm.name,
+        role_code: roleForm.code,
+        description: roleForm.description
+      }
+      await roleApi.create(createData)
       ElMessage.success('创建成功')
     }
 
-    showRoleForm.value = false
+    handleFormBeforeClose()
     fetchRoles()
   } catch (error) {
     ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
@@ -445,14 +505,9 @@ const handleFormSubmit = async () => {
   }
 }
 
-const handleFormClose = () => {
-  roleFormRef.value?.resetFields()
-  showRoleForm.value = false
-}
-
 const handleAssignPermissions = async (role: Role) => {
   currentRole.value = role
-  selectedPermissions.value = role.permissions?.map(p => p.id) || []
+  selectedPermissions.value = role.permissions?.map((p: any) => p.permission_id) || []
 
   if (Object.keys(permissionsByModule.value).length === 0) {
     permissionLoading.value = true
@@ -465,16 +520,29 @@ const handleAssignPermissions = async (role: Role) => {
 
 const handleModuleSelect = (checked: boolean, module: string) => {
   const modulePermissions = permissionsByModule.value[module] || []
-  const modulePermissionIds = modulePermissions.map(p => p.id)
+  if (!Array.isArray(modulePermissions)) {
+    return
+  }
+  const modulePermissionIds = modulePermissions.map(p => p.permission_id)
 
   if (checked) {
-    // 添加模块下所有权限
     const newIds = modulePermissionIds.filter(id => !selectedPermissions.value.includes(id))
     selectedPermissions.value.push(...newIds)
   } else {
-    // 移除模块下所有权限
     selectedPermissions.value = selectedPermissions.value.filter(id => !modulePermissionIds.includes(id))
   }
+}
+
+const handlePermissionBeforeClose = () => {
+  // 立即清空数据
+  selectedPermissions.value = []
+  currentRole.value = null
+  // 关闭弹窗
+  showPermissionDialog.value = false
+}
+
+const handlePermissionCancel = () => {
+  handlePermissionBeforeClose()
 }
 
 const handlePermissionSubmit = async () => {
@@ -482,9 +550,10 @@ const handlePermissionSubmit = async () => {
 
   try {
     submitLoading.value = true
-    await roleApi.assignPermissions(currentRole.value.id, selectedPermissions.value)
+    await roleApi.assignPermissions(currentRole.value.role_id, selectedPermissions.value)
     ElMessage.success('权限分配成功')
-    showPermissionDialog.value = false
+    // 提交成功后关闭弹窗
+    handlePermissionBeforeClose()
     fetchRoles()
   } catch (error) {
     ElMessage.error('权限分配失败')
@@ -492,11 +561,6 @@ const handlePermissionSubmit = async () => {
   } finally {
     submitLoading.value = false
   }
-}
-
-const handlePermissionDialogClose = () => {
-  showPermissionDialog.value = false
-  selectedPermissions.value = []
 }
 
 // 处理批量删除
@@ -512,9 +576,8 @@ const handleBatchDelete = async (roles: Role[]) => {
       }
     )
 
-    const roleIds = roles.map(role => role.id)
-    // 这里需要后端支持批量删除API
-    await Promise.all(roleIds.map(id => roleApi.deleteRole(id)))
+    const roleIds = roles.map(role => role.role_id)
+    await Promise.all(roleIds.map(id => roleApi.delete(id)))
     ElMessage.success('批量删除成功')
     fetchRoles()
   } catch (error: any) {
@@ -528,7 +591,7 @@ const handleBatchDelete = async (roles: Role[]) => {
 // 处理表格搜索
 const handleTableSearch = (keyword: string) => {
   // 简单的本地搜索实现，可根据需要改为服务端搜索
-  searchForm.name = keyword
+  searchForm.role_name = keyword
   handleSearch()
 }
 
@@ -609,29 +672,223 @@ onMounted(() => {
       }
     }
 
-    .permission-tree {
-      .permission-module {
-        margin-bottom: $spacing-lg;
+    .permission-container {
+      .permission-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: $spacing-md;
 
-        .module-header {
-          margin-bottom: $spacing-sm;
+        h4 {
+          margin: 0;
+          color: $text-primary;
+          font-size: 16px;
+          font-weight: 600;
         }
 
-        .module-permissions {
-          padding-left: $spacing-lg;
+        .permission-stats {
+          color: $text-secondary;
+          font-size: 14px;
 
-          .permission-item {
-            margin-bottom: $spacing-sm;
+          span {
+            background: #e1f3d8;
+            color: #529b2e;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+          }
+        }
+      }
 
-            .permission-desc {
-              margin-left: $spacing-sm;
-              font-size: 12px;
-              color: $text-secondary;
+      .permission-tree-wrapper {
+        height: 450px;
+        overflow-y: auto;
+        border: 1px solid #e4e7ed;
+        border-radius: 6px;
+        background: #fafafa;
+
+        &::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        &::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 3px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 3px;
+
+          &:hover {
+            background: #a8a8a8;
+          }
+        }
+      }
+
+      .permission-tree {
+        padding: $spacing-md;
+
+        .permission-module {
+          background: white;
+          border-radius: 8px;
+          margin-bottom: $spacing-md;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+
+          .module-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: $spacing-md;
+            margin: 0;
+
+            .module-checkbox {
+              :deep(.el-checkbox__label) {
+                color: white;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+              }
+
+              :deep(.el-checkbox__inner) {
+                border-color: rgba(255, 255, 255, 0.6);
+
+                &::after {
+                  border-color: #667eea;
+                }
+              }
+
+              :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+                background-color: white;
+                border-color: white;
+              }
+
+              :deep(.el-checkbox__input.is-indeterminate .el-checkbox__inner) {
+                background-color: rgba(255, 255, 255, 0.8);
+                border-color: white;
+
+                &::before {
+                  background-color: #667eea;
+                }
+              }
+
+              .module-name {
+                font-size: 16px;
+                font-weight: 600;
+              }
+
+              .module-count {
+                font-size: 12px;
+                opacity: 0.9;
+                background: rgba(255, 255, 255, 0.2);
+                padding: 2px 8px;
+                border-radius: 12px;
+                margin-left: auto;
+              }
+            }
+          }
+
+          .module-permissions {
+            padding: $spacing-md;
+
+            .permission-item {
+              margin-bottom: $spacing-sm;
+              padding: $spacing-sm;
+              border-radius: 6px;
+              transition: all 0.2s ease;
+
+              &:hover {
+                background-color: #f8f9ff;
+              }
+
+              &:last-child {
+                margin-bottom: 0;
+              }
+
+              .permission-checkbox {
+                width: 100%;
+
+                :deep(.el-checkbox__label) {
+                  width: 100%;
+                  color: $text-primary;
+                }
+
+                .permission-content {
+                  width: 100%;
+
+                  .permission-name {
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: $text-primary;
+                  }
+
+                  .permission-code {
+                    font-size: 12px;
+                    color: $text-secondary;
+                    margin-left: $spacing-xs;
+                    font-family: 'Courier New', monospace;
+                    background: #f0f0f0;
+                    padding: 1px 4px;
+                    border-radius: 3px;
+                  }
+
+                  .permission-desc {
+                    font-size: 12px;
+                    color: $text-secondary;
+                    margin-top: 4px;
+                    line-height: 1.4;
+                  }
+                }
+              }
             }
           }
         }
       }
     }
+  }
+}
+</style>
+
+<style lang="scss">
+// 权限分配弹窗的全局样式
+.permission-dialog {
+  .el-dialog__header {
+    //background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    //color: white;
+    margin: 0;
+    padding: 20px 24px;
+
+    .el-dialog__title {
+      color:black;
+      font-weight: 600;
+    }
+
+    .el-dialog__headerbtn {
+      .el-dialog__close {
+        color: white;
+        font-size: 18px;
+
+        &:hover {
+          color: black;
+        }
+      }
+    }
+  }
+
+  .el-dialog__body {
+    padding: 24px;
+    max-height: 70vh;
+    overflow: hidden;
+  }
+
+  .el-dialog__footer {
+    padding: 16px 24px;
+    text-align: right;
   }
 }
 </style>

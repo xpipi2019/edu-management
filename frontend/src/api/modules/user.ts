@@ -1,64 +1,64 @@
-import { request } from '@/utils/request'
-import { API_ENDPOINTS } from '@/constants/api'
+import { request } from '../../utils/request'
+import type { ApiResponse, PageQuery, PageResponse } from '../../types/common'
 import type {
   User,
   UserQuery,
   CreateUserData,
   UpdateUserData,
-  Teacher,
-  Student
-} from '@/types/user'
-import type { PageResponse } from '@/types/common'
+  BatchOperationData,
+  ResetPasswordData,
+  ToggleStatusData
+} from '../../types/database'
+import { API_ENDPOINTS } from '../../constants/api'
 
-// 用户相关API
+// ========================================
+// 用户管理API
+// ========================================
 export const userApi = {
   // 获取用户列表
-  getUsers: (params: UserQuery): Promise<PageResponse<User>> => {
+  getList: (params?: UserQuery): Promise<ApiResponse<PageResponse<User>>> => {
     return request.get(API_ENDPOINTS.USERS.LIST, { params })
   },
 
   // 获取用户详情
-  getUserById: (id: number): Promise<User> => {
+  getDetail: (id: number): Promise<ApiResponse<User | null>> => {
     return request.get(API_ENDPOINTS.USERS.DETAIL(id))
   },
 
   // 创建用户
-  createUser: (data: CreateUserData): Promise<User> => {
+  create: (data: CreateUserData): Promise<ApiResponse<User>> => {
     return request.post(API_ENDPOINTS.USERS.CREATE, data)
   },
 
   // 更新用户
-  updateUser: (id: number, data: UpdateUserData): Promise<User> => {
+  update: (id: number, data: UpdateUserData): Promise<ApiResponse<User | null>> => {
     return request.put(API_ENDPOINTS.USERS.UPDATE(id), data)
   },
 
   // 删除用户
-  deleteUser: (id: string | number): Promise<void> => {
+  delete: (id: number): Promise<ApiResponse<null>> => {
     return request.delete(API_ENDPOINTS.USERS.DELETE(id))
   },
 
   // 批量删除用户
-  batchDeleteUsers: (ids: (string | number)[]): Promise<void> => {
-    return request.delete(API_ENDPOINTS.USERS.BATCH_DELETE, { data: { ids } })
-  },
-
-  // 重置用户密码
-  resetPassword: (id: number): Promise<{ password: string }> => {
-    return request.post(API_ENDPOINTS.USERS.RESET_PASSWORD(id))
+  batchDelete: (data: BatchOperationData): Promise<ApiResponse<null>> => {
+    return request.post(API_ENDPOINTS.USERS.BATCH_DELETE, data)
   },
 
   // 启用/禁用用户
-  toggleUserStatus: (id: number): Promise<User> => {
-    return request.patch(API_ENDPOINTS.USERS.TOGGLE_STATUS(id))
+  toggleStatus: (id: number, data: ToggleStatusData): Promise<ApiResponse<User | null>> => {
+    return request.post(API_ENDPOINTS.USERS.TOGGLE_STATUS(id), data)
   },
 
-  // 获取教师信息
-  getTeacherByUserId: (userId: number): Promise<Teacher> => {
-    return request.get(API_ENDPOINTS.USERS.GET_TEACHER(userId))
+  // 重置用户密码
+  resetPassword: (id: number, data?: ResetPasswordData): Promise<ApiResponse<{ password: string }>> => {
+    return request.post(API_ENDPOINTS.USERS.RESET_PASSWORD(id), data || {})
   },
 
-  // 获取学生信息
-  getStudentByUserId: (userId: number): Promise<Student> => {
-    return request.get(API_ENDPOINTS.USERS.GET_STUDENT(userId))
+  // 分配角色
+  assignRoles: (id: number, roleIds: number[]): Promise<ApiResponse<null>> => {
+    return request.post(API_ENDPOINTS.USERS.ASSIGN_ROLES(id), { role_ids: roleIds })
   }
 }
+
+export default userApi

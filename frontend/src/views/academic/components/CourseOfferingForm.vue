@@ -21,9 +21,9 @@
         >
           <el-option
             v-for="course in courses"
-            :key="course.id"
-            :label="`${course.code} - ${course.name}`"
-            :value="course.id"
+            :key="course.course_id"
+            :label="`${course.course_code} - ${course.course_name}`"
+            :value="course.course_id"
           />
         </el-select>
       </el-form-item>
@@ -55,7 +55,7 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import BaseModal from '@/components/common/BaseModal/index.vue'
 import { courseApi, courseOfferingApi } from '@/api/modules/course'
-import type { Course, CourseOffering, CreateCourseOfferingData, UpdateCourseOfferingData } from '@/types/course'
+import type { Course, CourseOffering, CreateCourseOfferingData, UpdateCourseOfferingData } from '@/types/database'
 
 interface Props {
   modelValue: boolean
@@ -113,8 +113,8 @@ const formRules: FormRules = {
 const fetchCourses = async () => {
   try {
     coursesLoading.value = true
-    const coursesData = await courseApi.getAllCourses()
-    courses.value = coursesData
+    const response = await courseApi.getAll()
+    courses.value = response.data
   } catch (error: any) {
     ElMessage.error(error.message || '获取课程列表失败')
   } finally {
@@ -137,11 +137,11 @@ const resetForm = () => {
 // 填充表单数据
 const fillFormData = (offering: CourseOffering) => {
   Object.assign(formData, {
-    courseId: offering.courseId,
+    courseId: offering.course_id,
     semester: offering.semester,
-    academicYear: offering.academicYear,
-    classroom: offering.classroom || '',
-    maxStudents: offering.maxStudents
+    academicYear: '', // 暂时设为空，因为数据库中暂无此字段
+    classroom: '', // 暂时设为空，因为数据库中暂无此字段
+    maxStudents: offering.max_students
   })
 }
 
@@ -156,24 +156,19 @@ const handleSubmit = async () => {
       // 编辑开课
       const updateData: UpdateCourseOfferingData = {
         semester: formData.semester,
-        academicYear: formData.academicYear,
-        classroom: formData.classroom,
-        maxStudents: formData.maxStudents
+        max_students: formData.maxStudents
       }
-      await courseOfferingApi.updateCourseOffering(props.offering.id, updateData)
+      await courseOfferingApi.update(props.offering.offering_id, updateData)
       ElMessage.success('更新开课成功')
     } else {
       // 新增开课
       const createData: CreateCourseOfferingData = {
-        courseId: formData.courseId!,
-        teacherId: 1, // 这里应该从当前用户获取
+        course_id: formData.courseId!,
+        teacher_id: 1, // 这里应该从当前用户获取
         semester: formData.semester,
-        academicYear: formData.academicYear,
-        maxStudents: formData.maxStudents,
-        classroom: formData.classroom,
-        schedules: [] // 暂时为空，后续可以添加排课功能
+        max_students: formData.maxStudents
       }
-      await courseOfferingApi.createCourseOffering(createData)
+      await courseOfferingApi.create(createData)
       ElMessage.success('创建开课成功')
     }
 
@@ -209,7 +204,11 @@ watch(
   () => props.modelValue,
   (show) => {
     if (show) {
-      if (!props.offering) {
+      if (props.offering) {
+        // 编辑模式，填充数据
+        fillFormData(props.offering)
+      } else {
+        // 新增模式，重置表单
         resetForm()
       }
       fetchCourses()
