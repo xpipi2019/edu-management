@@ -4,7 +4,12 @@
     <div class="app-main">
       <AppSidebar />
       <main class="main-content">
-        <router-view />
+        <div class="content-header">
+          <Breadcrumb />
+        </div>
+        <div class="content-body">
+          <router-view />
+        </div>
       </main>
     </div>
   </div>
@@ -14,6 +19,7 @@
 import { onMounted } from 'vue'
 import AppHeader from '../AppHeader/index.vue'
 import AppSidebar from '../AppSidebar/index.vue'
+import Breadcrumb from '@/components/common/Breadcrumb/index.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -41,5 +47,15 @@ onMounted(() => {
   flex: 1;
   overflow: auto;
   background-color: $bg-page;
+}
+
+.content-header {
+  padding: 16px 24px 0;
+  background-color: $bg-white;
+  border-bottom: 1px solid $border-light;
+}
+
+.content-body {
+  padding: 24px;
 }
 </style>

@@ -8,111 +8,43 @@
       :collapse-transition="true"
       router
     >
-      <!-- 仪表盘 -->
-      <el-menu-item index="/dashboard">
-        <el-icon><House /></el-icon>
-        <template #title>仪表盘</template>
-      </el-menu-item>
+      <template v-for="menu in filteredMenus" :key="menu.title">
+        <!-- 有子菜单的项目 -->
+        <el-sub-menu
+          v-if="menu.children && menu.children.length > 0"
+          :index="menu.path || menu.title"
+        >
+          <template #title>
+            <el-icon v-if="menu.icon">
+              <component :is="getIconComponent(menu.icon)" />
+            </el-icon>
+            <span>{{ menu.title }}</span>
+          </template>
 
-      <!-- 系统管理 -->
-      <el-sub-menu
-        index="admin"
-        v-if="isSuperAdmin"
-      >
-        <template #title>
-          <el-icon><Setting /></el-icon>
-          <span>系统管理</span>
-        </template>
-        <el-menu-item index="/admin/users">
-          <el-icon><User /></el-icon>
-          <template #title>用户管理</template>
-        </el-menu-item>
-        <el-menu-item index="/admin/roles">
-          <el-icon><UserFilled /></el-icon>
-          <template #title>角色管理</template>
-        </el-menu-item>
-        <el-menu-item index="/admin/departments">
-          <el-icon><OfficeBuilding /></el-icon>
-          <template #title>部门管理</template>
-        </el-menu-item>
-      </el-sub-menu>
+          <template v-for="child in menu.children" :key="child.title">
+            <el-menu-item
+              v-if="child.path"
+              :index="child.path"
+            >
+              <el-icon v-if="child.icon">
+                <component :is="getIconComponent(child.icon)" />
+              </el-icon>
+              <template #title>{{ child.title }}</template>
+            </el-menu-item>
+          </template>
+        </el-sub-menu>
 
-      <!-- 教务管理 -->
-      <el-sub-menu
-        index="academic"
-        v-if="isSuperAdmin || isAcademicAdmin"
-      >
-        <template #title>
-          <el-icon><Reading /></el-icon>
-          <span>教务管理</span>
-        </template>
-        <el-menu-item index="/academic/courses">
-          <el-icon><Document /></el-icon>
-          <template #title>课程管理</template>
+        <!-- 没有子菜单的项目 -->
+        <el-menu-item
+          v-else-if="menu.path"
+          :index="menu.path"
+        >
+          <el-icon v-if="menu.icon">
+            <component :is="getIconComponent(menu.icon)" />
+          </el-icon>
+          <template #title>{{ menu.title }}</template>
         </el-menu-item>
-        <el-menu-item index="/academic/course-offerings">
-          <el-icon><Postcard /></el-icon>
-          <template #title>开课管理</template>
-        </el-menu-item>
-        <el-menu-item index="/academic/schedules">
-          <el-icon><Calendar /></el-icon>
-          <template #title>排课管理</template>
-        </el-menu-item>
-        <el-menu-item index="/academic/classrooms">
-          <el-icon><OfficeBuilding /></el-icon>
-          <template #title>教室管理</template>
-        </el-menu-item>
-        <el-menu-item index="/academic/student-status">
-          <el-icon><School /></el-icon>
-          <template #title>学籍管理</template>
-        </el-menu-item>
-        <el-menu-item index="/academic/reward-punishment">
-          <el-icon><Trophy /></el-icon>
-          <template #title>奖惩管理</template>
-        </el-menu-item>
-      </el-sub-menu>
-
-      <!-- 教师功能 -->
-      <el-sub-menu
-        index="teacher"
-        v-if="isTeacher"
-      >
-        <template #title>
-          <el-icon><Avatar /></el-icon>
-          <span>教师功能</span>
-        </template>
-        <el-menu-item index="/teacher/my-courses">
-          <el-icon><Document /></el-icon>
-          <template #title>我的课程</template>
-        </el-menu-item>
-        <el-menu-item index="/teacher/grades">
-          <el-icon><EditPen /></el-icon>
-          <template #title>成绩管理</template>
-        </el-menu-item>
-      </el-sub-menu>
-
-      <!-- 学生功能 -->
-      <el-sub-menu
-        index="student"
-        v-if="isStudent"
-      >
-        <template #title>
-          <el-icon><User /></el-icon>
-          <span>学生功能</span>
-        </template>
-        <el-menu-item index="/student/courses">
-          <el-icon><Plus /></el-icon>
-          <template #title>选课</template>
-        </el-menu-item>
-        <el-menu-item index="/student/grades">
-          <el-icon><View /></el-icon>
-          <template #title>成绩查询</template>
-        </el-menu-item>
-        <el-menu-item index="/student/profile">
-          <el-icon><UserFilled /></el-icon>
-          <template #title>个人信息</template>
-        </el-menu-item>
-      </el-sub-menu>
+      </template>
     </el-menu>
   </aside>
 </template>
@@ -137,12 +69,36 @@ import {
   School,
   Trophy
 } from '@element-plus/icons-vue'
-import { usePermission } from '@/composables/usePermission'
+import { useMenu } from '@/composables/useMenu'
 import { useAppStore } from '@/stores/app'
 
 const route = useRoute()
 const appStore = useAppStore()
-const { isTeacher, isStudent, isSuperAdmin, isAcademicAdmin } = usePermission()
+const { filteredMenus } = useMenu()
+
+// 图标组件映射
+const iconComponents = {
+  House,
+  Setting,
+  User,
+  UserFilled,
+  OfficeBuilding,
+  Reading,
+  Document,
+  Calendar,
+  Avatar,
+  EditPen,
+  Plus,
+  View,
+  Postcard,
+  School,
+  Trophy
+}
+
+// 获取图标组件
+const getIconComponent = (iconName: string) => {
+  return iconComponents[iconName as keyof typeof iconComponents] || Document
+}
 
 // 侧边栏是否折叠（从store获取）
 const isCollapsed = computed(() => appStore.sidebarCollapsed)

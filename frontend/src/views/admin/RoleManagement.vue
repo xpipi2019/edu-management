@@ -194,6 +194,7 @@
 
           <div class="permission-tree-wrapper" v-loading="permissionLoading">
             <div class="permission-tree">
+              <!-- 权限模块列表 -->
               <div
                 v-for="(permissions, module) in permissionsByModule"
                 :key="module"
@@ -211,7 +212,8 @@
                   </el-checkbox>
                 </div>
 
-                <div class="module-permissions" v-if="Array.isArray(permissions)">
+                <!-- 权限列表 -->
+                <div class="module-permissions" v-if="Array.isArray(permissions) && permissions.length > 0">
                   <el-checkbox-group v-model="selectedPermissions">
                     <div
                       v-for="permission in permissions"
@@ -230,6 +232,17 @@
                     </div>
                   </el-checkbox-group>
                 </div>
+
+                <!-- 空状态提示 -->
+                <div v-else class="no-permissions">
+                  <span>该模块暂无权限数据</span>
+                </div>
+              </div>
+
+              <!-- 整体空状态 -->
+              <div v-if="Object.keys(permissionsByModule).length === 0 && !permissionLoading" class="empty-permissions">
+                <el-empty description="暂无权限数据" />
+                <el-button type="primary" @click="fetchPermissions" style="margin-top: 16px;">重新获取权限数据</el-button>
               </div>
             </div>
           </div>
@@ -358,18 +371,17 @@ const fetchRoles = async () => {
 const fetchPermissions = async () => {
   try {
     permissionLoading.value = true
-    const [allPermsResponse, modulePermsResponse] = await Promise.all([
-      permissionApi.getAll(),
-      permissionApi.getByModule()
-    ])
-    allPermissions.value = allPermsResponse.data
+    const response = await permissionApi.getByModule()
 
-    if (modulePermsResponse.data) {
-      permissionsByModule.value = modulePermsResponse.data
+    if (response && response.code === 0 && response.data) {
+      permissionsByModule.value = response.data
+    } else {
+      permissionsByModule.value = {}
+      ElMessage.error('权限数据格式错误')
     }
   } catch (error) {
     ElMessage.error('获取权限列表失败')
-    console.error('Failed to fetch permissions:', error)
+    permissionsByModule.value = {}
   } finally {
     permissionLoading.value = false
   }
@@ -509,10 +521,9 @@ const handleAssignPermissions = async (role: Role) => {
   currentRole.value = role
   selectedPermissions.value = role.permissions?.map((p: any) => p.permission_id) || []
 
+  // 如果权限数据为空，则重新获取
   if (Object.keys(permissionsByModule.value).length === 0) {
-    permissionLoading.value = true
     await fetchPermissions()
-    permissionLoading.value = false
   }
 
   showPermissionDialog.value = true
@@ -611,6 +622,7 @@ const formatDateTime = (date: string | Date | null | undefined): string => {
 // 初始化
 onMounted(() => {
   fetchRoles()
+  fetchPermissions()
 })
 </script>
 
@@ -852,14 +864,24 @@ onMounted(() => {
     }
   }
 }
+
+/* 权限分配相关样式 */
+.no-permissions {
+  text-align: center;
+  padding: $spacing-lg;
+  color: $text-secondary;
+  font-size: 14px;
+}
+
+.empty-permissions {
+  padding: $spacing-lg;
+}
 </style>
 
 <style lang="scss">
 // 权限分配弹窗的全局样式
 .permission-dialog {
   .el-dialog__header {
-    //background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    //color: white;
     margin: 0;
     padding: 20px 24px;
 

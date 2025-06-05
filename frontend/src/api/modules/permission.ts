@@ -1,4 +1,4 @@
-import request from '../../utils/request'
+import { request } from '../../utils/request'
 import type { ApiResponse } from '../../types/common'
 import type { Permission } from '../../types/database'
 import { API_ENDPOINTS } from '../../constants/api'

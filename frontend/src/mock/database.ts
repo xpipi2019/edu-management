@@ -110,10 +110,15 @@ export const mockPermissions: Permission[] = [
   // 教师业务权限
   { permission_id: 67, permission_name: '查看我的课程', permission_code: 'MY_COURSES_VIEW', module: '教师业务', status: 1 },
   { permission_id: 68, permission_name: '查看学生名单', permission_code: 'STUDENT_LIST_VIEW', module: '教师业务', status: 1 },
+  { permission_id: 69, permission_name: '录入成绩', permission_code: 'GRADE_INPUT', module: '教师业务', status: 1 },
+  { permission_id: 70, permission_name: '查看课程安排', permission_code: 'SCHEDULE_VIEW', module: '教师业务', status: 1 },
 
   // 学生业务权限
-  { permission_id: 69, permission_name: '查看我的选课', permission_code: 'MY_ENROLLMENT_VIEW', module: '学生业务', status: 1 },
-  { permission_id: 70, permission_name: '查看我的成绩', permission_code: 'MY_GRADE_VIEW', module: '学生业务', status: 1 }
+  { permission_id: 71, permission_name: '查看课程信息', permission_code: 'COURSE_INFO_VIEW', module: '学生业务', status: 1 },
+  { permission_id: 72, permission_name: '选课操作', permission_code: 'ENROLLMENT_CREATE', module: '学生业务', status: 1 },
+  { permission_id: 73, permission_name: '退课操作', permission_code: 'ENROLLMENT_DROP', module: '学生业务', status: 1 },
+  { permission_id: 74, permission_name: '查看我的选课', permission_code: 'MY_ENROLLMENT_VIEW', module: '学生业务', status: 1 },
+  { permission_id: 75, permission_name: '查看我的成绩', permission_code: 'MY_GRADE_VIEW', module: '学生业务', status: 1 }
 ]
 
 // ========================================
@@ -124,10 +129,12 @@ export const mockRoles: Role[] = [
     role_id: 1,
     role_name: '超级管理员',
     role_code: 'SUPER_ADMIN',
-    description: '系统超级管理员，拥有所有权限',
+    description: '系统超级管理员，拥有所有管理权限',
     status: RoleStatus.ACTIVE,
     created_at: '2024-01-01 00:00:00',
-    permissions: mockPermissions
+    permissions: mockPermissions.filter(p =>
+      !['学生业务', '教师业务'].includes(p.module)
+    )
   },
   {
     role_id: 2,
@@ -137,7 +144,7 @@ export const mockRoles: Role[] = [
     status: RoleStatus.ACTIVE,
     created_at: '2024-01-01 00:00:00',
     permissions: mockPermissions.filter(p =>
-      ['课程管理', '开课管理', '选课管理', '成绩管理', '排课管理', '系统管理'].includes(p.module)
+      ['课程管理', '开课管理', '选课管理', '成绩管理', '排课管理', '系统管理', '教师管理', '用户管理', '角色管理', '部门管理'].includes(p.module)
     )
   },
   {
@@ -180,16 +187,41 @@ export const mockRoles: Role[] = [
 // 部门数据
 // ========================================
 export const mockDepartments: Department[] = [
-  { dept_id: 1, dept_name: '计算机科学与技术学院', dept_code: 'CS', status: 1 },
-  { dept_id: 2, dept_name: '软件工程系', dept_code: 'SE', parent_id: 1, status: 1 },
-  { dept_id: 3, dept_name: '计算机科学系', dept_code: 'CST', parent_id: 1, status: 1 },
-  { dept_id: 4, dept_name: '网络工程系', dept_code: 'NE', parent_id: 1, status: 1 },
-  { dept_id: 5, dept_name: '数学与应用数学学院', dept_code: 'MATH', status: 1 },
-  { dept_id: 6, dept_name: '应用数学系', dept_code: 'AM', parent_id: 5, status: 1 },
-  { dept_id: 7, dept_name: '统计学系', dept_code: 'STAT', parent_id: 5, status: 1 },
-  { dept_id: 8, dept_name: '物理学院', dept_code: 'PHY', status: 1 },
-  { dept_id: 9, dept_name: '理论物理系', dept_code: 'TP', parent_id: 8, status: 1 },
-  { dept_id: 10, dept_name: '应用物理系', dept_code: 'AP', parent_id: 8, status: 1 }
+  {
+    dept_id: 1,
+    dept_name: '教务处',
+    dept_code: 'EDU',
+    description: '负责教学管理和教务工作',
+    status: 1
+  },
+  {
+    dept_id: 2,
+    dept_name: '计算机科学与技术学院',
+    dept_code: 'CS',
+    description: '计算机相关专业',
+    status: 1
+  },
+  {
+    dept_id: 3,
+    dept_name: '数学与统计学院',
+    dept_code: 'MATH',
+    description: '数学相关专业',
+    status: 1
+  },
+  {
+    dept_id: 4,
+    dept_name: '外国语学院',
+    dept_code: 'FL',
+    description: '外语相关专业',
+    status: 1
+  },
+  {
+    dept_id: 5,
+    dept_name: '经济管理学院',
+    dept_code: 'EM',
+    description: '经管相关专业',
+    status: 1
+  }
 ]
 
 // ========================================
@@ -229,6 +261,7 @@ export const mockUsers: User[] = [
     updated_at: '2024-01-01 00:00:00',
     roles: [mockRoles[2]]
   },
+  // 教师用户
   {
     user_id: 4,
     username: 'teacher001',
@@ -253,6 +286,40 @@ export const mockUsers: User[] = [
   },
   {
     user_id: 6,
+    username: 'teacher003',
+    real_name: '王讲师',
+    email: 'wang.teacher@school.edu.cn',
+    phone: '13800138014',
+    status: UserStatus.ACTIVE,
+    created_at: '2024-01-01 00:00:00',
+    updated_at: '2024-01-01 00:00:00',
+    roles: [mockRoles[3]]
+  },
+  {
+    user_id: 7,
+    username: 'teacher004',
+    real_name: '陈副教授',
+    email: 'chen@school.edu.cn',
+    phone: '13800138015',
+    status: UserStatus.ACTIVE,
+    created_at: '2024-01-01 00:00:00',
+    updated_at: '2024-01-01 00:00:00',
+    roles: [mockRoles[3]]
+  },
+  {
+    user_id: 8,
+    username: 'teacher005',
+    real_name: '刘教授',
+    email: 'liu.teacher@school.edu.cn',
+    phone: '13800138016',
+    status: UserStatus.ACTIVE,
+    created_at: '2024-01-01 00:00:00',
+    updated_at: '2024-01-01 00:00:00',
+    roles: [mockRoles[3]]
+  },
+  // 学生用户
+  {
+    user_id: 9,
     username: 'student001',
     real_name: '王小明',
     email: 'wang@stu.school.edu.cn',
@@ -263,11 +330,77 @@ export const mockUsers: User[] = [
     roles: [mockRoles[4]]
   },
   {
-    user_id: 7,
+    user_id: 10,
     username: 'student002',
     real_name: '刘小红',
     email: 'liu@stu.school.edu.cn',
     phone: '13800138007',
+    status: UserStatus.ACTIVE,
+    created_at: '2024-01-01 00:00:00',
+    updated_at: '2024-01-01 00:00:00',
+    roles: [mockRoles[4]]
+  },
+  {
+    user_id: 11,
+    username: 'student003',
+    real_name: '张小华',
+    email: 'zhang.stu@stu.school.edu.cn',
+    phone: '13800138008',
+    status: UserStatus.ACTIVE,
+    created_at: '2024-01-01 00:00:00',
+    updated_at: '2024-01-01 00:00:00',
+    roles: [mockRoles[4]]
+  },
+  {
+    user_id: 12,
+    username: 'student004',
+    real_name: '李小强',
+    email: 'li.stu@stu.school.edu.cn',
+    phone: '13800138009',
+    status: UserStatus.ACTIVE,
+    created_at: '2024-01-01 00:00:00',
+    updated_at: '2024-01-01 00:00:00',
+    roles: [mockRoles[4]]
+  },
+  {
+    user_id: 13,
+    username: 'student005',
+    real_name: '赵小美',
+    email: 'zhao@stu.school.edu.cn',
+    phone: '13800138010',
+    status: UserStatus.ACTIVE,
+    created_at: '2024-01-01 00:00:00',
+    updated_at: '2024-01-01 00:00:00',
+    roles: [mockRoles[4]]
+  },
+  {
+    user_id: 14,
+    username: 'student006',
+    real_name: '孙小亮',
+    email: 'sun@stu.school.edu.cn',
+    phone: '13800138011',
+    status: UserStatus.ACTIVE,
+    created_at: '2024-01-01 00:00:00',
+    updated_at: '2024-01-01 00:00:00',
+    roles: [mockRoles[4]]
+  },
+  {
+    user_id: 15,
+    username: 'student007',
+    real_name: '周小丽',
+    email: 'zhou@stu.school.edu.cn',
+    phone: '13800138012',
+    status: UserStatus.ACTIVE,
+    created_at: '2024-01-01 00:00:00',
+    updated_at: '2024-01-01 00:00:00',
+    roles: [mockRoles[4]]
+  },
+  {
+    user_id: 16,
+    username: 'student008',
+    real_name: '吴小伟',
+    email: 'wu@stu.school.edu.cn',
+    phone: '13800138013',
     status: UserStatus.ACTIVE,
     created_at: '2024-01-01 00:00:00',
     updated_at: '2024-01-01 00:00:00',
@@ -300,6 +433,39 @@ export const mockTeachers: Teacher[] = [
     status: TeacherStatus.ACTIVE,
     user: mockUsers[4],
     department: mockDepartments[2]
+  },
+  {
+    teacher_id: 3,
+    user_id: 6,
+    teacher_no: 'T202401003',
+    dept_id: 2,
+    title: '讲师',
+    hire_date: '2022-09-01',
+    status: TeacherStatus.ACTIVE,
+    user: mockUsers[5],
+    department: mockDepartments[1]
+  },
+  {
+    teacher_id: 4,
+    user_id: 7,
+    teacher_no: 'T202401004',
+    dept_id: 3,
+    title: '副教授',
+    hire_date: '2019-09-01',
+    status: TeacherStatus.ACTIVE,
+    user: mockUsers[6],
+    department: mockDepartments[2]
+  },
+  {
+    teacher_id: 5,
+    user_id: 8,
+    teacher_no: 'T202401005',
+    dept_id: 4,
+    title: '教授',
+    hire_date: '2018-09-01',
+    status: TeacherStatus.ACTIVE,
+    user: mockUsers[7],
+    department: mockDepartments[3]
   }
 ]
 
@@ -309,24 +475,90 @@ export const mockTeachers: Teacher[] = [
 export const mockStudents: Student[] = [
   {
     student_id: 1,
-    user_id: 6,
+    user_id: 9,
     student_no: '2024001001',
     dept_id: 2,
     class_name: '软工2024-1班',
     grade: 2024,
     enrollment_year: 2024,
-    user: mockUsers[5],
+    user: mockUsers[8],
     department: mockDepartments[1]
   },
   {
     student_id: 2,
-    user_id: 7,
+    user_id: 10,
     student_no: '2024001002',
     dept_id: 2,
     class_name: '软工2024-1班',
     grade: 2024,
     enrollment_year: 2024,
-    user: mockUsers[6],
+    user: mockUsers[9],
+    department: mockDepartments[1]
+  },
+  {
+    student_id: 3,
+    user_id: 11,
+    student_no: '2024001003',
+    dept_id: 2,
+    class_name: '计科2024-1班',
+    grade: 2024,
+    enrollment_year: 2024,
+    user: mockUsers[10],
+    department: mockDepartments[1]
+  },
+  {
+    student_id: 4,
+    user_id: 12,
+    student_no: '2024001004',
+    dept_id: 3,
+    class_name: '数学2024-1班',
+    grade: 2024,
+    enrollment_year: 2024,
+    user: mockUsers[11],
+    department: mockDepartments[2]
+  },
+  {
+    student_id: 5,
+    user_id: 13,
+    student_no: '2024001005',
+    dept_id: 3,
+    class_name: '统计2024-1班',
+    grade: 2024,
+    enrollment_year: 2024,
+    user: mockUsers[12],
+    department: mockDepartments[2]
+  },
+  {
+    student_id: 6,
+    user_id: 14,
+    student_no: '2024001006',
+    dept_id: 4,
+    class_name: '英语2024-1班',
+    grade: 2024,
+    enrollment_year: 2024,
+    user: mockUsers[13],
+    department: mockDepartments[3]
+  },
+  {
+    student_id: 7,
+    user_id: 15,
+    student_no: '2024001007',
+    dept_id: 5,
+    class_name: '工商2024-1班',
+    grade: 2024,
+    enrollment_year: 2024,
+    user: mockUsers[14],
+    department: mockDepartments[4]
+  },
+  {
+    student_id: 8,
+    user_id: 16,
+    student_no: '2024001008',
+    dept_id: 2,
+    class_name: '软工2024-2班',
+    grade: 2024,
+    enrollment_year: 2024,
+    user: mockUsers[15],
     department: mockDepartments[1]
   }
 ]

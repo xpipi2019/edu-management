@@ -6,57 +6,60 @@
     </div>
 
     <div class="dashboard-content">
-      <el-row :gutter="20">
-        <el-col :span="6">
-          <div class="stat-card">
-            <div class="stat-icon">
-              <el-icon><User /></el-icon>
+      <!-- 只有管理员可以看到系统统计 -->
+      <div v-if="isAdmin" class="system-stats">
+        <el-row :gutter="20">
+          <el-col :span="6">
+            <div class="stat-card">
+              <div class="stat-icon">
+                <el-icon><User /></el-icon>
+              </div>
+              <div class="stat-info">
+                <h3>活跃用户</h3>
+                <p class="stat-number">{{ stats.activeUsers || 0 }}</p>
+              </div>
             </div>
-            <div class="stat-info">
-              <h3>用户总数</h3>
-              <p class="stat-number">1,234</p>
-            </div>
-          </div>
-        </el-col>
+          </el-col>
 
-        <el-col :span="6">
-          <div class="stat-card">
-            <div class="stat-icon">
-              <el-icon><Document /></el-icon>
+          <el-col :span="6">
+            <div class="stat-card">
+              <div class="stat-icon">
+                <el-icon><Document /></el-icon>
+              </div>
+              <div class="stat-info">
+                <h3>活跃课程</h3>
+                <p class="stat-number">{{ stats.activeCourses || 0 }}</p>
+              </div>
             </div>
-            <div class="stat-info">
-              <h3>课程总数</h3>
-              <p class="stat-number">156</p>
-            </div>
-          </div>
-        </el-col>
+          </el-col>
 
-        <el-col :span="6">
-          <div class="stat-card">
-            <div class="stat-icon">
-              <el-icon><Avatar /></el-icon>
+          <el-col :span="6">
+            <div class="stat-card">
+              <div class="stat-icon">
+                <el-icon><Avatar /></el-icon>
+              </div>
+              <div class="stat-info">
+                <h3>活跃教师</h3>
+                <p class="stat-number">{{ stats.activeTeachers || 0 }}</p>
+              </div>
             </div>
-            <div class="stat-info">
-              <h3>教师总数</h3>
-              <p class="stat-number">89</p>
-            </div>
-          </div>
-        </el-col>
+          </el-col>
 
-        <el-col :span="6">
-          <div class="stat-card">
-            <div class="stat-icon">
-              <el-icon><UserFilled /></el-icon>
+          <el-col :span="6">
+            <div class="stat-card">
+              <div class="stat-icon">
+                <el-icon><UserFilled /></el-icon>
+              </div>
+              <div class="stat-info">
+                <h3>学生总数</h3>
+                <p class="stat-number">{{ stats.totalStudents || 0 }}</p>
+              </div>
             </div>
-            <div class="stat-info">
-              <h3>学生总数</h3>
-              <p class="stat-number">2,567</p>
-            </div>
-          </div>
-        </el-col>
-      </el-row>
+          </el-col>
+        </el-row>
+      </div>
 
-      <el-row :gutter="20" style="margin-top: 20px;">
+      <el-row :gutter="20" :style="{ marginTop: isAdmin ? '20px' : '0' }">
         <el-col :span="12">
           <el-card header="最近通知">
             <div class="notice-list">
@@ -77,13 +80,13 @@
         <el-col :span="12">
           <el-card header="快捷操作">
             <div class="quick-actions">
-              <el-button type="primary" @click="$router.push('/admin/users')">
+              <el-button v-if="isAdmin" type="primary" @click="$router.push('/admin/users')">
                 用户管理
               </el-button>
-              <el-button type="success" @click="$router.push('/academic/courses')">
+              <el-button v-if="isAdmin || isTeacher" type="success" @click="$router.push('/academic/courses')">
                 课程管理
               </el-button>
-              <el-button type="warning" @click="$router.push('/academic/schedules')">
+              <el-button v-if="isAdmin || isTeacher" type="warning" @click="$router.push('/academic/schedules')">
                 排课管理
               </el-button>
               <el-button type="info" @click="$router.push('/student/grades')">
@@ -98,7 +101,50 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
 import { User, Document, Avatar, UserFilled } from '@element-plus/icons-vue'
+import { useAuthStore } from '@/stores/auth'
+import { statisticsApi } from '@/api/modules/statistics'
+import type { SystemOverview } from '@/api/modules/statistics'
+import { ElMessage } from 'element-plus'
+
+const authStore = useAuthStore()
+
+// 权限判断
+const isAdmin = computed(() => authStore.hasRole('admin'))
+const isTeacher = computed(() => authStore.hasRole('teacher'))
+const isStudent = computed(() => authStore.hasRole('student'))
+
+// 统计数据
+const stats = ref<SystemOverview>({
+  activeUsers: 0,
+  totalStudents: 0,
+  activeTeachers: 0,
+  activeCourses: 0,
+  currentOfferings: 0,
+  totalEnrollments: 0
+})
+
+// 获取统计数据
+const fetchStats = async () => {
+  if (!isAdmin.value) return
+
+  try {
+    const response = await statisticsApi.getSystemOverview()
+    if (response.code === 0) {
+      stats.value = response.data
+    } else {
+      ElMessage.error(response.message || '获取统计数据失败')
+    }
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
+    ElMessage.error('获取统计数据失败')
+  }
+}
+
+onMounted(() => {
+  fetchStats()
+})
 </script>
 
 <style lang="scss" scoped>

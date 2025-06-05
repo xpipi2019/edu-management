@@ -22,7 +22,8 @@
   <a href="#-快速开始">快速开始</a> •
   <a href="#-文档">文档</a> •
   <a href="#-技术栈">技术栈</a> •
-  <a href="#-角色职责">角色职责</a>
+  <a href="#-角色职责">角色职责</a> •
+  <a href="./CHANGELOG.md">更新日志</a>
 </p>
 
 ---
@@ -132,34 +133,37 @@ npm run dev
 ## 📁 项目结构
 
 ```
-frontend/
-├── src/
-│   ├── api/            # API接口模块
-│   ├── components/     # 可复用组件
-│   │   ├── business/   # 业务组件
-│   │   ├── common/     # 通用组件
-│   │   └── layout/     # 布局组件
-│   ├── constants/      # 常量定义
-│   ├── mock/          # Mock数据
-│   ├── router/        # 路由配置
-│   ├── stores/        # Pinia状态管理
-│   ├── types/         # TypeScript类型定义
-│   ├── utils/         # 工具函数
-│   └── views/         # 页面组件
-│       ├── admin/     # 管理模块
-│       ├── academic/  # 教务模块
-│       ├── student/   # 学生模块
-│       └── teacher/   # 教师模块
-└── public/            # 静态资源
-
-docs/                  # 项目文档
-├── assets/           # 文档图片资源
-├── 需求分析.md        # 系统需求分析
-├── 概念结构设计.md    # E-R图设计文档
-├── 逻辑结构设计.md    # 数据库逻辑设计
-├── 数据库建表脚本说明.md  # 建表脚本详细说明
-├── 数据库示例数据插入说明.md  # 测试数据说明
-└── 数据库功能模块代码示例.md  # 功能实现示例
+edu-management/
+├── CHANGELOG.md       # 更新日志
+├── README.MD         # 项目说明文档
+├── LICENSE           # 开源许可证
+├── frontend/         # 前端项目
+│   ├── src/
+│   │   ├── api/            # API接口模块
+│   │   ├── components/     # 可复用组件
+│   │   │   ├── business/   # 业务组件
+│   │   │   ├── common/     # 通用组件
+│   │   │   └── layout/     # 布局组件
+│   │   ├── constants/      # 常量定义
+│   │   ├── mock/          # Mock数据
+│   │   ├── router/        # 路由配置
+│   │   ├── stores/        # Pinia状态管理
+│   │   ├── types/         # TypeScript类型定义
+│   │   ├── utils/         # 工具函数
+│   │   └── views/         # 页面组件
+│   │       ├── admin/     # 管理模块
+│   │       ├── academic/  # 教务模块
+│   │       ├── student/   # 学生模块
+│   │       └── teacher/   # 教师模块
+│   └── public/            # 静态资源
+└── docs/                  # 项目文档
+    ├── assets/           # 文档图片资源
+    ├── 需求分析.md        # 系统需求分析
+    ├── 概念结构设计.md    # E-R图设计文档
+    ├── 逻辑结构设计.md    # 数据库逻辑设计
+    ├── 数据库建表脚本说明.md  # 建表脚本详细说明
+    ├── 数据库示例数据插入说明.md  # 测试数据说明
+    └── 数据库功能模块代码示例.md  # 功能实现示例
 ```
 
 ## 🔧 开发命令

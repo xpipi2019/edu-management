@@ -32,6 +32,25 @@ const router = createRouter({
             requiresAuth: true
           }
         },
+        // 通用路由
+        {
+          path: '/profile',
+          name: 'PersonalInfo',
+          component: () => import('@/views/PersonalInfo.vue'),
+          meta: {
+            title: '个人信息',
+            requiresAuth: true
+          }
+        },
+        {
+          path: '/settings',
+          name: 'Settings',
+          component: () => import('@/views/Settings.vue'),
+          meta: {
+            title: '系统设置',
+            requiresAuth: true
+          }
+        },
         // 用户管理路由
         {
           path: '/admin/users',
@@ -61,6 +80,26 @@ const router = createRouter({
             title: '部门管理',
             requiresAuth: true,
             permissions: [Permission.DEPARTMENT_MANAGE]
+          }
+        },
+        {
+          path: '/admin/teachers',
+          name: 'TeacherManagement',
+          component: () => import('@/views/admin/TeacherManagement.vue'),
+          meta: {
+            title: '教师管理',
+            requiresAuth: true,
+            permissions: [Permission.TEACHER_MANAGE]
+          }
+        },
+        {
+          path: '/admin/students',
+          name: 'StudentManagement',
+          component: () => import('@/views/admin/StudentManagement.vue'),
+          meta: {
+            title: '学生管理',
+            requiresAuth: true,
+            permissions: [Permission.STUDENT_MANAGE]
           }
         },
         // 课程管理路由
@@ -155,7 +194,7 @@ const router = createRouter({
           meta: {
             title: '选课',
             requiresAuth: true,
-            permissions: [Permission.ENROLLMENT_VIEW]
+            permissions: [Permission.MY_ENROLLMENT_VIEW]
           }
         },
         {
@@ -165,16 +204,7 @@ const router = createRouter({
           meta: {
             title: '成绩查询',
             requiresAuth: true,
-            permissions: [Permission.GRADE_VIEW]
-          }
-        },
-        {
-          path: '/student/profile',
-          name: 'PersonalInfo',
-          component: () => import('@/views/student/PersonalInfo.vue'),
-          meta: {
-            title: '个人信息',
-            requiresAuth: true
+            permissions: [Permission.MY_GRADE_VIEW]
           }
         }
       ]

@@ -216,6 +216,7 @@ export const API_ENDPOINTS = {
   // 统计报表
   STATISTICS: {
     DASHBOARD: '/statistics/dashboard',
+    OVERVIEW: '/statistics/overview',
     ENROLLMENT_STATS: '/statistics/enrollment',
     GRADE_STATS: '/statistics/grades',
     TEACHER_WORKLOAD: '/statistics/teacher-workload',

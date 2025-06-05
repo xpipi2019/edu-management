@@ -378,6 +378,29 @@ export const roleApi = {
       message: '获取成功',
       data: role
     }
+  },
+
+  assignPermissions(id: number, permissionIds: number[]): ApiResponse<null> {
+    const roleIndex = mockDatabase.roles.findIndex(r => r.role_id === id)
+    if (roleIndex === -1) {
+      return {
+        code: 1,
+        message: '角色不存在',
+        data: null
+      }
+    }
+
+    // 根据权限ID获取权限对象
+    const permissions = mockDatabase.permissions.filter(p => permissionIds.includes(p.permission_id))
+
+    // 更新角色的权限
+    mockDatabase.roles[roleIndex].permissions = permissions
+
+    return {
+      code: 0,
+      message: '权限分配成功',
+      data: null
+    }
   }
 }
 
@@ -2217,6 +2240,60 @@ export const studentStatusApi = {
   }
 }
 
+// ========================================
+// 统计数据API
+// ========================================
+export const statisticsApi = {
+  getSystemOverview(): ApiResponse<any> {
+    // 计算真实的统计数据
+    const activeUsers = mockDatabase.users.filter(u => u.status === 1).length
+    const totalStudents = mockDatabase.students.length
+    const activeTeachers = mockDatabase.teachers.filter(t => t.status === 1).length
+    const activeCourses = mockDatabase.courses.filter(c => c.status === 1).length
+    const currentOfferings = mockDatabase.courseOfferings.filter(co => co.status === 1).length
+    const totalEnrollments = mockDatabase.enrollments.filter(e => e.status === 1).length
+
+    return {
+      code: 0,
+      message: '获取成功',
+      data: {
+        activeUsers,
+        totalStudents,
+        activeTeachers,
+        activeCourses,
+        currentOfferings,
+        totalEnrollments
+      }
+    }
+  },
+
+  getDashboardStats(): ApiResponse<any> {
+    return {
+      code: 0,
+      message: '获取成功',
+      data: {
+        overview: statisticsApi.getSystemOverview().data,
+        recentNotices: [
+          {
+            id: 1,
+            title: '关于期末考试安排的通知',
+            content: '2024年春季学期期末考试将于6月15日开始...',
+            publishTime: '2024-05-20',
+            publisher: '教务处'
+          },
+          {
+            id: 2,
+            title: '选课系统维护通知',
+            content: '选课系统将于本周六进行维护升级...',
+            publishTime: '2024-05-18',
+            publisher: '信息中心'
+          }
+        ]
+      }
+    }
+  }
+}
+
 // 导出所有API
 export const mockApi = {
   auth: authApi,
@@ -2233,7 +2310,8 @@ export const mockApi = {
   schedule: scheduleApi,
   classroom: classroomApi,
   rewardPunishment: rewardPunishmentApi,
-  studentStatus: studentStatusApi
+  studentStatus: studentStatusApi,
+  statistics: statisticsApi
 }
 
 export default mockApi

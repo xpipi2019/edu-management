@@ -14,7 +14,8 @@ import {
   scheduleApi,
   classroomApi,
   rewardPunishmentApi,
-  studentStatusApi
+  studentStatusApi,
+  statisticsApi
 } from './api'
 
 export default [
@@ -135,6 +136,14 @@ export default [
     response: ({ query }: any) => {
       const id = parseInt(query.id)
       return roleApi.getDetail(id)
+    }
+  },
+  {
+    url: '/api/roles/:id/assign-permissions',
+    method: 'post',
+    response: ({ body, query }: any) => {
+      const id = parseInt(query.id)
+      return roleApi.assignPermissions(id, body.permission_ids)
     }
   },
 
@@ -856,5 +865,17 @@ export default [
       const id = parseInt(query.id)
       return studentStatusApi.getDetail(id)
     }
+  },
+
+  // 统计数据API
+  {
+    url: '/api/statistics/overview',
+    method: 'get',
+    response: () => statisticsApi.getSystemOverview()
+  },
+  {
+    url: '/api/statistics/dashboard',
+    method: 'get',
+    response: () => statisticsApi.getDashboardStats()
   }
 ] as MockMethod[]

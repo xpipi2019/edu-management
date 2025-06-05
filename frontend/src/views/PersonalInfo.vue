@@ -6,7 +6,7 @@
       <p>查看和管理我的个人信息</p>
     </div>
 
-    <el-row :gutter="20">
+    <el-row :gutter="20" v-loading="loading">
       <!-- 基本信息 -->
       <el-col :span="16">
         <el-card class="info-card" shadow="never">
@@ -18,71 +18,105 @@
 
           <el-descriptions :column="2" border>
             <el-descriptions-item label="真实姓名">
-              {{ studentInfo.user?.real_name || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item label="学号">
-              {{ studentInfo.student_no || '-' }}
+              {{ userInfo.real_name || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="用户名">
-              {{ studentInfo.user?.username || '-' }}
+              {{ userInfo.username || '-' }}
             </el-descriptions-item>
-            <el-descriptions-item label="入学年份">
-              {{ studentInfo.enrollment_year || '-' }}
+            <el-descriptions-item label="角色">
+              <el-tag
+                v-for="role in userInfo.roles"
+                :key="role.role_id"
+                type="primary"
+                size="small"
+                style="margin-right: 8px;"
+              >
+                {{ role.role_name }}
+              </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="手机号码">
-              {{ studentInfo.user?.phone || '-' }}
+              {{ userInfo.phone || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="邮箱地址">
-              {{ studentInfo.user?.email || '-' }}
+              {{ userInfo.email || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="账户状态">
               <el-tag
-                :type="getUserStatusTagType(studentInfo.user?.status)"
+                :type="getUserStatusTagType(userInfo.status)"
                 size="small"
               >
-                {{ getUserStatusText(studentInfo.user?.status) }}
+                {{ getUserStatusText(userInfo.status) }}
               </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="创建时间">
-              {{ studentInfo.user?.created_at ? formatDate(studentInfo.user.created_at) : '-' }}
+              {{ userInfo.created_at ? formatDate(userInfo.created_at) : '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="最后登录">
+              {{ userInfo.updated_at ? formatDate(userInfo.updated_at) : '-' }}
             </el-descriptions-item>
           </el-descriptions>
         </el-card>
 
-        <!-- 学籍信息 -->
-        <el-card class="info-card" shadow="never" style="margin-top: 20px;">
+        <!-- 角色专有信息 -->
+        <el-card v-if="roleSpecificInfo" class="info-card" shadow="never" style="margin-top: 20px;">
           <template #header>
-            <span>学籍信息</span>
+            <span>{{ getRoleInfoTitle() }}</span>
           </template>
 
-          <el-descriptions :column="2" border>
+          <!-- 学生信息 -->
+          <el-descriptions v-if="isStudent && studentInfo" :column="2" border>
+            <el-descriptions-item label="学号">
+              {{ studentInfo.student_no || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="入学年份">
+              {{ studentInfo.enrollment_year || '-' }}
+            </el-descriptions-item>
             <el-descriptions-item label="专业">
               {{ studentInfo.department?.dept_name || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="班级">
               {{ studentInfo.class_name || '-' }}
             </el-descriptions-item>
-            <el-descriptions-item label="学籍状态">
-              <el-tag
-                :type="getStudentStatusTagType()"
-                size="small"
-              >
-                在读
-              </el-tag>
+          </el-descriptions>
+
+          <!-- 教师信息 -->
+          <el-descriptions v-if="isTeacher && teacherInfo" :column="2" border>
+            <el-descriptions-item label="工号">
+              {{ teacherInfo.teacher_no || '-' }}
             </el-descriptions-item>
-            <el-descriptions-item label="入学年份">
-              {{ studentInfo.enrollment_year || '-' }}
+            <el-descriptions-item label="职位">
+              {{ teacherInfo.title || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="所属院系">
+              {{ teacherInfo.department?.dept_name || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="入职时间">
+              {{ teacherInfo.hire_date ? formatDate(teacherInfo.hire_date) : '-' }}
+            </el-descriptions-item>
+          </el-descriptions>
+
+          <!-- 管理员信息 -->
+          <el-descriptions v-if="isAdmin" :column="2" border>
+            <el-descriptions-item label="管理级别">
+              超级管理员
+            </el-descriptions-item>
+            <el-descriptions-item label="权限范围">
+              <span v-if="userInfo.permissions && userInfo.permissions.length > 0">
+                {{ userInfo.permissions.length }} 项权限
+              </span>
+              <span v-else>-</span>
             </el-descriptions-item>
           </el-descriptions>
         </el-card>
 
-        <!-- 学习统计 -->
-        <el-card class="info-card" shadow="never" style="margin-top: 20px;">
+        <!-- 学习/工作统计 -->
+        <el-card v-if="showStats" class="info-card" shadow="never" style="margin-top: 20px;">
           <template #header>
-            <span>学习统计</span>
+            <span>{{ getStatsTitle() }}</span>
           </template>
 
-          <el-row :gutter="20">
+          <!-- 学生统计 -->
+          <el-row v-if="isStudent" :gutter="20">
             <el-col :span="6">
               <div class="stat-item">
                 <div class="stat-value">{{ studyStats.totalCredits }}</div>
@@ -108,6 +142,34 @@
               </div>
             </el-col>
           </el-row>
+
+          <!-- 教师统计 -->
+          <el-row v-if="isTeacher" :gutter="20">
+            <el-col :span="6">
+              <div class="stat-item">
+                <div class="stat-value">{{ teachingStats.totalCourses }}</div>
+                <div class="stat-label">授课数量</div>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-item">
+                <div class="stat-value">{{ teachingStats.totalStudents }}</div>
+                <div class="stat-label">学生总数</div>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-item">
+                <div class="stat-value">{{ teachingStats.averageRating }}</div>
+                <div class="stat-label">教学评分</div>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="stat-item">
+                <div class="stat-value">{{ teachingStats.researchProjects }}</div>
+                <div class="stat-label">科研项目</div>
+              </div>
+            </el-col>
+          </el-row>
         </el-card>
       </el-col>
 
@@ -128,9 +190,13 @@
               <el-icon><Phone /></el-icon>
               更新联系方式
             </el-button>
-            <el-button @click="downloadStudentCard" class="action-button">
+            <el-button v-if="isStudent" @click="downloadStudentCard" class="action-button">
               <el-icon><CreditCard /></el-icon>
               下载学生证
+            </el-button>
+            <el-button v-if="isTeacher" @click="downloadTeacherCard" class="action-button">
+              <el-icon><CreditCard /></el-icon>
+              下载工作证
             </el-button>
           </div>
         </el-card>
@@ -221,9 +287,12 @@ import {
   Phone,
   CreditCard
 } from '@element-plus/icons-vue'
-import { userApi, authApi } from '@/api/modules'
-import type { Student } from '@/types/database'
-import { UserStatus, StudentStatusType } from '@/types/database'
+import { userApi, authApi, studentApi, teacherApi } from '@/api/modules'
+import { useAuthStore } from '@/stores/auth'
+import type { User, Student, Teacher } from '@/types/database'
+import { UserStatus } from '@/types/database'
+
+const authStore = useAuthStore()
 
 // 响应式数据
 const loading = ref(false)
@@ -232,26 +301,23 @@ const contactLoading = ref(false)
 const showPasswordDialog = ref(false)
 const showContactDialog = ref(false)
 
-// 学生信息
-const studentInfo = ref<Student>({
-  student_id: 0,
+// 用户信息
+const userInfo = ref<User>({
   user_id: 0,
-  student_no: '',
-  enrollment_year: 0,
-  class_name: '',
-  user: {
-    user_id: 0,
-    username: '',
-    email: '',
-    phone: '',
-    real_name: '',
-    status: UserStatus.ACTIVE,
-    created_at: '',
-    updated_at: '',
-    roles: [],
-    permissions: []
-  }
+  username: '',
+  email: '',
+  phone: '',
+  real_name: '',
+  status: UserStatus.ACTIVE,
+  created_at: '',
+  updated_at: '',
+  roles: [],
+  permissions: []
 })
+
+// 角色专有信息
+const studentInfo = ref<Student | null>(null)
+const teacherInfo = ref<Teacher | null>(null)
 
 // 表单引用
 const passwordFormRef = ref()
@@ -305,10 +371,29 @@ const contactRules = {
   ]
 }
 
+// 计算属性 - 判断用户角色
+const isStudent = computed(() => {
+  return userInfo.value.roles?.some(role => role.role_name === '学生')
+})
+
+const isTeacher = computed(() => {
+  return userInfo.value.roles?.some(role => role.role_name === '教师')
+})
+
+const isAdmin = computed(() => {
+  return userInfo.value.roles?.some(role => role.role_name === '管理员' || role.role_name === '超级管理员')
+})
+
+const roleSpecificInfo = computed(() => {
+  return isStudent.value || isTeacher.value || isAdmin.value
+})
+
+const showStats = computed(() => {
+  return isStudent.value || isTeacher.value
+})
+
 // 计算属性 - 学习统计
 const studyStats = computed(() => {
-  // 这里应该从实际的选课和成绩数据中计算
-  // 暂时使用模拟数据
   return {
     totalCredits: 45,
     passedCourses: 12,
@@ -317,48 +402,60 @@ const studyStats = computed(() => {
   }
 })
 
-// 获取学生信息
-const fetchStudentInfo = async () => {
+// 计算属性 - 教学统计
+const teachingStats = computed(() => {
+  return {
+    totalCourses: 8,
+    totalStudents: 240,
+    averageRating: '4.7',
+    researchProjects: 3
+  }
+})
+
+// 获取用户信息
+const fetchUserInfo = async () => {
   try {
     loading.value = true
-    // 这里应该调用获取当前学生信息的API
-    // 暂时使用模拟数据
-    const mockData: Student = {
-      student_id: 1,
-      user_id: 4,
-      student_no: 'S001',
-      enrollment_year: 2021,
-      class_name: '计科2021-1班',
-      user: {
-        user_id: 4,
-        username: 'student001',
-        email: 'student@example.com',
-        phone: '13800138000',
-        real_name: '李同学',
-        status: UserStatus.ACTIVE,
-        created_at: '2021-09-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
-        roles: [],
-        permissions: []
-      },
-      department: {
-        dept_id: 1,
-        dept_name: '计算机科学与技术学院',
-        dept_code: 'CS',
-        status: 1
+
+    // 获取当前用户基本信息
+    const currentUser = authStore.user
+    if (!currentUser) {
+      throw new Error('用户未登录')
+    }
+
+    // 获取完整的用户信息
+    const userResponse = await userApi.getDetail(currentUser.user_id)
+    if (userResponse.data) {
+      userInfo.value = userResponse.data
+    } else {
+      throw new Error('获取用户信息为空')
+    }
+
+    // 根据角色获取专有信息
+    if (isStudent.value) {
+      try {
+        const studentResponse = await studentApi.getByUser(currentUser.user_id)
+        studentInfo.value = studentResponse.data
+      } catch (error) {
+        console.warn('获取学生信息失败:', error)
       }
     }
 
-    studentInfo.value = mockData
+    if (isTeacher.value) {
+      try {
+        const teacherResponse = await teacherApi.getByUser(currentUser.user_id)
+        teacherInfo.value = teacherResponse.data
+      } catch (error) {
+        console.warn('获取教师信息失败:', error)
+      }
+    }
 
     // 初始化表单数据
-    if (studentInfo.value.user) {
-      contactForm.phone = studentInfo.value.user.phone || ''
-      contactForm.email = studentInfo.value.user.email || ''
-    }
+    contactForm.phone = userInfo.value.phone || ''
+    contactForm.email = userInfo.value.email || ''
   } catch (error) {
-    console.error('获取学生信息失败：', error)
-    ElMessage.error('获取学生信息失败')
+    console.error('获取用户信息失败：', error)
+    ElMessage.error('获取用户信息失败')
   } finally {
     loading.value = false
   }
@@ -372,7 +469,6 @@ const changePassword = async () => {
     await passwordFormRef.value.validate()
     passwordLoading.value = true
 
-    // 调用修改密码API
     await authApi.changePassword({
       oldPassword: passwordForm.oldPassword,
       newPassword: passwordForm.newPassword
@@ -401,17 +497,17 @@ const updateContact = async () => {
     await contactFormRef.value.validate()
     contactLoading.value = true
 
-    // 调用更新联系方式API
-    await userApi.update(studentInfo.value.user_id, {
+    await userApi.update(userInfo.value.user_id, {
       phone: contactForm.phone,
       email: contactForm.email
     })
 
     // 更新本地数据
-    if (studentInfo.value.user) {
-      studentInfo.value.user.phone = contactForm.phone
-      studentInfo.value.user.email = contactForm.email
-    }
+    userInfo.value.phone = contactForm.phone
+    userInfo.value.email = contactForm.email
+
+    // 更新 store 中的用户信息
+    authStore.updateUser(userInfo.value)
 
     showContactDialog.value = false
     ElMessage.success('联系方式更新成功')
@@ -428,7 +524,25 @@ const downloadStudentCard = () => {
   ElMessage.info('学生证下载功能开发中...')
 }
 
+// 下载工作证
+const downloadTeacherCard = () => {
+  ElMessage.info('工作证下载功能开发中...')
+}
+
 // 工具函数
+const getRoleInfoTitle = () => {
+  if (isStudent.value) return '学籍信息'
+  if (isTeacher.value) return '职工信息'
+  if (isAdmin.value) return '管理信息'
+  return '角色信息'
+}
+
+const getStatsTitle = () => {
+  if (isStudent.value) return '学习统计'
+  if (isTeacher.value) return '教学统计'
+  return '统计信息'
+}
+
 const getUserStatusText = (status?: UserStatus) => {
   if (!status) return '-'
   const statusMap: Record<UserStatus, string> = {
@@ -449,28 +563,6 @@ const getUserStatusTagType = (status?: UserStatus) => {
   return typeMap[status] || ''
 }
 
-const getStatusText = (statusType: string) => {
-  const statusMap: Record<string, string> = {
-    '在读': '在读',
-    '已毕业': '已毕业',
-    '休学': '休学'
-  }
-  return statusMap[statusType] || statusType
-}
-
-const getStatusTagType = (statusType: string) => {
-  const typeMap: Record<string, string> = {
-    '在读': 'success',
-    '已毕业': 'info',
-    '休学': 'warning'
-  }
-  return typeMap[statusType] || ''
-}
-
-const getStudentStatusTagType = () => {
-  return 'success' // 默认在读状态
-}
-
 const formatDate = (dateString: string) => {
   if (!dateString) return '-'
   return new Date(dateString).toLocaleDateString('zh-CN')
@@ -478,7 +570,7 @@ const formatDate = (dateString: string) => {
 
 // 生命周期
 onMounted(() => {
-  fetchStudentInfo()
+  fetchUserInfo()
 })
 </script>
 

@@ -419,6 +419,7 @@ export interface CreateStudentData {
   class_name?: string
   grade?: number
   enrollment_year?: number
+  graduation_year?: number
 }
 
 export interface UpdateStudentData {
@@ -428,6 +429,7 @@ export interface UpdateStudentData {
   class_name?: string
   grade?: number
   enrollment_year?: number
+  graduation_year?: number
 }
 
 export interface CreateCourseData {
