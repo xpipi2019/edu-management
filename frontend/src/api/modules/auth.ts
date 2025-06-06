@@ -7,7 +7,7 @@ import { API_ENDPOINTS } from '../../constants/api'
 export const authApi = {
   // 用户登录
   login: (data: LoginForm): Promise<ApiResponse<LoginResponse | null>> => {
-    return service.post(API_ENDPOINTS.AUTH.LOGIN, data).then(res => res.data)
+    return service.post(API_ENDPOINTS.AUTH.LOGIN + '/json', data).then(res => res.data)
   },
 
   // 用户退出
