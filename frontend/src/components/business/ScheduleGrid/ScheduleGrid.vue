@@ -283,40 +283,107 @@ const getClassroomName = (schedule: Schedule): string => {
 
 // 解析时间字符串为数字（用于时间段计算）
 const parseTimeToNumber = (timeStr: string): number => {
-  // 将时间字符串解析为节次数字
-  // 这里需要根据实际的时间格式调整
-  const timeMap: Record<string, number> = {
-    '08:00': 1, '08:45': 1,
-    '08:55': 2, '09:40': 2,
-    '10:00': 3, '10:45': 3,
-    '10:55': 4, '11:40': 4,
-    '14:00': 5, '14:45': 5,
-    '14:55': 6, '15:40': 6,
-    '16:00': 7, '16:45': 7,
-    '16:55': 8, '17:40': 8,
-    '19:00': 9, '19:45': 9,
-    '19:55': 10, '20:40': 10
+  // 处理null或undefined
+  if (timeStr === null || timeStr === undefined) {
+    return 1;
   }
-  return timeMap[timeStr] || 1
+  
+  // 首先尝试直接将字符串解析为数字
+  const directNum = Number(timeStr);
+  if (!isNaN(directNum)) {
+    return directNum;
+  }
+  
+  // 如果是字符串，尝试多种格式解析
+  if (typeof timeStr === 'string') {
+    // 如果是时间格式，则映射到对应节次
+    const timeMap: Record<string, number> = {
+      '08:00': 1, '08:45': 1,
+      '08:55': 2, '09:40': 2,
+      '10:00': 3, '10:45': 3,
+      '10:55': 4, '11:40': 4,
+      '14:00': 5, '14:45': 5,
+      '14:55': 6, '15:40': 6,
+      '16:00': 7, '16:45': 7,
+      '16:55': 8, '17:40': 8,
+      '19:00': 9, '19:45': 9,
+      '19:55': 10, '20:40': 10
+    }
+    
+    // 如果能在映射表中找到，则返回对应节次
+    if (timeStr in timeMap) {
+      return timeMap[timeStr];
+    }
+    
+    // 尝试通过小时进行匹配
+    if (timeStr.includes(':')) {
+      try {
+        const hour = parseInt(timeStr.split(':')[0], 10);
+        if (!isNaN(hour)) {
+          if (hour >= 8 && hour < 9) return 1;
+          if (hour >= 9 && hour < 10) return 2;
+          if (hour >= 10 && hour < 11) return 3;
+          if (hour >= 11 && hour < 12) return 4;
+          if (hour >= 14 && hour < 15) return 5;
+          if (hour >= 15 && hour < 16) return 6;
+          if (hour >= 16 && hour < 17) return 7;
+          if (hour >= 17 && hour < 18) return 8;
+          if (hour >= 19 && hour < 20) return 9;
+          if (hour >= 20 && hour < 21) return 10;
+        }
+      } catch (e) {
+        // 解析失败，继续尝试其他方法
+      }
+    }
+    
+    // 尝试提取数字部分
+    const match = timeStr.match(/(\d+)/);
+    if (match && match[1]) {
+      const num = Number(match[1]);
+      return num;
+    }
+  }
+  
+  // 如果所有方法都失败，返回默认值
+  return 1;
 }
 
 // 检查周次是否在范围内
 const isWeekInRange = (weeksStr: string, targetWeek: number): boolean => {
-  // 解析周次字符串，如 "1-16" 或 "1-8,10-16"
-  const ranges = weeksStr.split(',')
-  for (const range of ranges) {
-    if (range.includes('-')) {
-      const [start, end] = range.split('-').map(Number)
-      if (targetWeek >= start && targetWeek <= end) {
-        return true
-      }
-    } else {
-      if (Number(range) === targetWeek) {
-        return true
+  // 如果未指定周次，默认显示
+  if (!weeksStr) {
+    return true;
+  }
+  
+  try {
+    // 规范化周次字符串
+    const normalizedWeeks = weeksStr.replace(/\s+/g, '');
+    
+    // 解析周次字符串，如 "1-16" 或 "1-8,10-16"
+    const ranges = normalizedWeeks.split(',');
+    
+    for (const range of ranges) {
+      if (range.includes('-')) {
+        const [startStr, endStr] = range.split('-');
+        const start = parseInt(startStr, 10);
+        const end = parseInt(endStr, 10);
+        
+        if (!isNaN(start) && !isNaN(end) && targetWeek >= start && targetWeek <= end) {
+          return true;
+        }
+      } else {
+        const week = parseInt(range, 10);
+        if (!isNaN(week) && week === targetWeek) {
+          return true;
+        }
       }
     }
+    
+    return false;
+  } catch (error) {
+    // 解析出错时默认显示
+    return true;
   }
-  return false
 }
 
 // 打印课程表

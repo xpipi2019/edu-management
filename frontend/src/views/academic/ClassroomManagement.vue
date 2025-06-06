@@ -399,9 +399,31 @@ const formRules: FormRules = {
 }
 
 // 方法
+const processEquipmentData = (classroom: any): any => {
+  // 深拷贝避免修改原始数据
+  const processed = { ...classroom };
+  
+  // 处理设备数据
+  if (processed.equipment === null || processed.equipment === undefined) {
+    processed.equipment = [];
+  } else if (typeof processed.equipment === 'string') {
+    // 如果是字符串，按逗号分割并过滤空值
+    processed.equipment = processed.equipment
+      .split(',')
+      .map(item => item.trim())
+      .filter(item => item);
+  } else if (!Array.isArray(processed.equipment)) {
+    // 如果既不是字符串也不是数组，设为空数组
+    console.warn(`教室 ${processed.room_no} 的设备数据格式异常:`, processed.equipment);
+    processed.equipment = [];
+  }
+  
+  return processed;
+};
+
 const fetchClassrooms = async () => {
   try {
-    loading.value = true
+    loading.value = true;
     const params = {
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -409,21 +431,20 @@ const fetchClassrooms = async () => {
       building: searchForm.building,
       room_type: searchForm.type as ClassroomType | undefined,
       status: searchForm.status ? Number(searchForm.status) as ClassroomStatus : undefined
-    }
+    };
 
-    const response = await classroomApi.getList(params)
-    classroomList.value = response.data.list.map(item => ({
-      ...item,
-      equipment: typeof item.equipment === 'string' ? item.equipment.split(',').filter(Boolean) : []
-    }))
-    pagination.total = response.data.total
+    const response = await classroomApi.getList(params);
+    
+    // 处理每个教室的设备数据
+    classroomList.value = response.data.list.map(item => processEquipmentData(item));
+    pagination.total = response.data.total;
   } catch (error) {
-    ElMessage.error('获取教室列表失败')
-    console.error('获取教室列表失败:', error)
+    ElMessage.error('获取教室列表失败');
+    console.error('获取教室列表失败:', error);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const handleSearch = () => {
   pagination.page = 1
@@ -505,11 +526,11 @@ const handleDelete = async (row: ExtendedClassroom) => {
 }
 
 const handleSubmit = async () => {
-  if (!formRef.value) return
+  if (!formRef.value) return;
 
   try {
-    await formRef.value.validate()
-    submitting.value = true
+    await formRef.value.validate();
+    submitting.value = true;
 
     const data = {
       room_no: form.name,
@@ -517,29 +538,30 @@ const handleSubmit = async () => {
       floor: form.floor,
       capacity: form.capacity,
       room_type: form.type as ClassroomType,
-      equipment: form.equipment.join(','),
+      // 确保设备数据是字符串
+      equipment: Array.isArray(form.equipment) ? form.equipment.join(',') : form.equipment,
       ...(isEdit.value && { status: form.status })
-    }
+    };
 
     if (isEdit.value) {
-      await classroomApi.update(form.id, data)
-      ElMessage.success('更新成功')
+      await classroomApi.update(form.id, data);
+      ElMessage.success('更新成功');
     } else {
-      await classroomApi.create(data)
-      ElMessage.success('创建成功')
+      await classroomApi.create(data);
+      ElMessage.success('创建成功');
     }
 
-    dialogVisible.value = false
-    fetchClassrooms()
+    dialogVisible.value = false;
+    fetchClassrooms();
   } catch (error: any) {
     if (error.message) {
-      ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
+      ElMessage.error(isEdit.value ? '更新失败' : '创建失败');
     }
-    console.error('提交失败:', error)
+    console.error('提交失败:', error);
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
-}
+};
 
 const handleDialogClose = () => {
   resetForm()

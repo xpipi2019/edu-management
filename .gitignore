@@ -34,6 +34,7 @@ frontend/.env.local
 frontend/.env.*.local
 frontend/.env.development
 frontend/.env.production
+frontend/package-lock.json
 
 # 日志
 frontend/npm-debug.log*
