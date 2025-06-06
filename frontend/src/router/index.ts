@@ -254,9 +254,16 @@ router.beforeEach(async (to, from, next) => {
     // 如果没有用户信息，尝试获取
     if (!authStore.user) {
       try {
-        // 这里可以调用获取用户信息的API
-        // await authStore.getUserInfo()
+        // 调用获取用户信息的API
+        const { authApi } = await import('@/api/modules/auth')
+        const response = await authApi.getProfile()
+        if (response.code === 0 && response.data) {
+          authStore.updateUser(response.data)
+        } else {
+          throw new Error('获取用户信息失败')
+        }
       } catch (error) {
+        console.error('获取用户信息失败:', error)
         authStore.logout()
         next({
           path: '/login',
