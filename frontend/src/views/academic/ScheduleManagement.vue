@@ -203,8 +203,8 @@
                 :total="total"
                 :page-sizes="[10, 20, 50, 100]"
                 layout="total, sizes, prev, pager, next, jumper"
-                @size-change="handleSearch"
-                @current-change="handleSearch"
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
               />
             </div>
           </div>
@@ -460,12 +460,15 @@ const fetchSchedules = async () => {
     const response = await scheduleApi.getList({
       page: queryForm.page,
       pageSize: queryForm.pageSize,
-      semester: queryForm.semester,
-      teacher_id: queryForm.teacher_id
+      semester: queryForm.semester || undefined,
+      teacher_id: queryForm.teacher_id || undefined,
+      classroom_id: queryForm.classroom_id || undefined,
+      academic_year: queryForm.academic_year || undefined
     })
     schedules.value = response.data.list
     total.value = response.data.total
   } catch (error) {
+    console.error('获取排课信息失败:', error)
     ElMessage.error('获取排课信息失败')
   } finally {
     loading.value = false
@@ -518,7 +521,6 @@ const fetchClassrooms = async () => {
 }
 
 const handleSearch = () => {
-  queryForm.page = 1
   fetchSchedules()
 }
 
@@ -668,6 +670,19 @@ const getClassroomDisplayName = (classroom: string | any): string => {
     }
   }
   return '未安排教室'
+}
+
+// 处理页码变化
+const handleCurrentChange = (page: number) => {
+  queryForm.page = page
+  fetchSchedules()
+}
+
+// 处理每页条数变化
+const handleSizeChange = (size: number) => {
+  queryForm.pageSize = size
+  queryForm.page = 1
+  fetchSchedules()
 }
 </script>
 
