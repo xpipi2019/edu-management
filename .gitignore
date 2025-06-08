@@ -1,0 +1,116 @@
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器和IDE文件
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.sublime-project
+*.sublime-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 前端忽略项
+# 依赖
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+
+# 构建输出
+frontend/dist/
+frontend/dist-ssr/
+frontend/build/
+
+# 本地环境文件
+frontend/.env.local
+frontend/.env.*.local
+frontend/.env.development
+frontend/.env.production
+frontend/package-lock.json
+
+# 日志
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/logs/
+frontend/*.log
+
+# 测试覆盖率
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+
+# 后端忽略项
+# Python缓存文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/__pycache__/
+backend/*/__pycache__/
+backend/*/*/__pycache__/
+backend/*/*/*/__pycache__/
+
+# 虚拟环境
+backend/env/
+backend/venv/
+backend/.env/
+backend/.venv/
+backend/ENV/
+backend/env.bak/
+backend/venv.bak/
+
+# 后端环境配置
+backend/.env
+backend/.env.local
+backend/.env.development
+backend/.env.production
+
+# 数据库文件
+*.sqlite3
+*.db
+backend/*.sqlite3
+backend/*.db
+
+# 日志
+backend/logs/
+backend/*.log
+
+# 缓存
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/.tox/
+backend/.nox/
+
+# 临时文件
+.tmp/
+.temp/
+tmp/
+temp/
+
+# 上传文件
+uploads/
+media/
+backend/uploads/
+backend/media/
+
+# 其他
+.cursor/
+.history/
+.vercel
+.output
+
+# 本地配置
+config.local.js
+config.local.py 

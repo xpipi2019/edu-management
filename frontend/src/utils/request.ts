@@ -41,8 +41,8 @@ service.interceptors.response.use(
 
     const { data } = response
 
-    // 检查业务状态码
-    if (data.code === BUSINESS_CODE.SUCCESS) {
+    // 检查业务状态码 - 后端可能直接返回数据而不是包装在code/data中
+    if (!data.code || data.code === BUSINESS_CODE.SUCCESS) {
       return response
     }
 

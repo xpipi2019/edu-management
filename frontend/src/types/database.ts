@@ -343,6 +343,7 @@ export interface GradeQuery extends PageQuery {
 
 export interface ScheduleQuery extends PageQuery {
   semester?: string
+  academic_year?: string
   course_id?: number
   teacher_id?: number
   classroom_id?: number

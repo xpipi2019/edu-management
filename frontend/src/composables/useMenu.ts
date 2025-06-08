@@ -8,7 +8,11 @@ export const useMenu = () => {
   // 检查菜单项是否有权限访问
   const hasMenuPermission = (item: MenuItem): boolean => {
     if (!item.permission) return true
-    return hasPermission(item.permission)
+    
+    // 添加调试日志
+    const result = hasPermission(item.permission)
+    console.log(`检查菜单权限: ${item.title}, 权限: ${Array.isArray(item.permission) ? item.permission.join(',') : item.permission}, 结果: ${result}`)
+    return result
   }
 
   // 深拷贝菜单项
@@ -21,7 +25,9 @@ export const useMenu = () => {
 
   // 递归过滤菜单项
   const filterMenu = (menuItems: MenuItem[]): MenuItem[] => {
-    return menuItems
+    console.log('开始过滤菜单项...')
+    
+    const filtered = menuItems
       .map(item => deepCloneMenuItem(item)) // 深拷贝避免修改原数组
       .filter(item => {
         // 如果菜单项被隐藏，直接过滤掉
@@ -32,6 +38,7 @@ export const useMenu = () => {
           const filteredChildren = filterMenu(item.children)
           // 如果过滤后没有子菜单，且父菜单本身没有路径，则隐藏父菜单
           if (filteredChildren.length === 0 && !item.path) {
+            console.log(`菜单 ${item.title} 没有可见的子菜单，且没有路径，将被隐藏`)
             return false
           }
           // 更新子菜单
@@ -39,12 +46,21 @@ export const useMenu = () => {
         }
 
         // 检查当前菜单项的权限
-        return hasMenuPermission(item)
+        const hasPermission = hasMenuPermission(item)
+        console.log(`菜单项 ${item.title} 权限检查结果: ${hasPermission}`)
+        return hasPermission
       })
+    
+    console.log(`过滤后的菜单项数量: ${filtered.length}`)
+    return filtered
   }
 
   // 过滤后的菜单
-  const filteredMenus = computed(() => filterMenu(SIDEBAR_MENU))
+  const filteredMenus = computed(() => {
+    const result = filterMenu(SIDEBAR_MENU)
+    console.log('最终过滤后的菜单:', result)
+    return result
+  })
 
   // 获取所有有权限的叶子节点菜单（用于面包屑等）
   const getAllLeafMenus = (menuItems: MenuItem[] = filteredMenus.value): MenuItem[] => {
