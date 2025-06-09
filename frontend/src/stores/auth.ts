@@ -1,3 +1,13 @@
+/**
+ * @fileoverview 教育管理系统前端认证状态管理
+ * @description 基于Pinia的用户认证、权限管理和状态持久化
+ * @author XPIPI
+ * @version 1.0.0
+ * @date 2025-06-09
+ * @license MIT
+ * @copyright © 2025 XPIPI. All rights reserved.
+ */
+
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User, LoginForm, LoginResponse } from '@/types/database'
@@ -23,7 +33,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     // 从用户的所有角色中提取权限
     const permissions = new Set<string>()
-    
+
     // 直接从用户对象获取权限列表
     if (user.value.permissions && Array.isArray(user.value.permissions)) {
       user.value.permissions.forEach(permission => {
@@ -32,7 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('从用户对象直接获取的权限:', Array.from(permissions))
       return Array.from(permissions)
     }
-    
+
     // 如果用户对象没有权限列表，则从角色中提取
     user.value.roles.forEach(role => {
       if (role.permissions) {
@@ -83,7 +93,7 @@ export const useAuthStore = defineStore('auth', () => {
       refreshToken: authData.refresh_token ? '已设置' : '未设置',
       user: authData.user ? '已设置' : '未设置'
     })
-    
+
     if (authData.user) {
       console.log('用户角色:', authData.user.roles)
       console.log('用户权限:', authData.user.permissions)
@@ -105,7 +115,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('token')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
-    
+
     console.log('已清除认证信息')
   }
 
@@ -120,7 +130,7 @@ export const useAuthStore = defineStore('auth', () => {
   const updateUser = (userData: User) => {
     user.value = userData
     localStorage.setItem('user', JSON.stringify(user.value))
-    
+
     console.log('更新用户信息:', userData)
     console.log('用户角色:', userData.roles)
     console.log('用户权限:', userData.permissions)
@@ -132,7 +142,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     const permissions = userPermissions.value
     console.log(`检查权限 [${Array.isArray(permission) ? permission.join(', ') : permission}]，用户权限: [${permissions.join(', ')}]`)
-    
+
     if (Array.isArray(permission)) {
       return permission.some(p => permissions.includes(p))
     }
@@ -145,7 +155,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     const roles = userRoles.value
     console.log(`检查角色 [${Array.isArray(role) ? role.join(', ') : role}]，用户角色: [${roles.join(', ')}]`)
-    
+
     if (Array.isArray(role)) {
       return role.some(r => roles.includes(r))
     }

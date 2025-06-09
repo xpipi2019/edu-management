@@ -1,3 +1,13 @@
+<!--
+  @fileoverview 教育管理系统前端应用主布局组件
+  @description 应用的主要布局结构，包含头部、侧边栏和主内容区域
+  @author XPIPI
+  @version 1.0.0
+  @date 2025-06-09
+  @license MIT
+  @copyright © 2025 XPIPI. All rights reserved.
+-->
+
 <template>
   <div class="app-container">
     <AppHeader />

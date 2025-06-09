@@ -1,3 +1,13 @@
+/**
+ * @fileoverview 教育管理系统前端应用状态管理
+ * @description 管理应用全局状态，如侧边栏折叠状态等
+ * @author XPIPI
+ * @version 1.0.0
+ * @date 2025-06-09
+ * @license MIT
+ * @copyright © 2025 XPIPI. All rights reserved.
+ */
+
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 

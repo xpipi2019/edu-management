@@ -1,3 +1,13 @@
+/**
+ * @fileoverview 教育管理系统前端路由配置
+ * @description 定义应用的路由规则、权限控制和导航守卫
+ * @author XPIPI
+ * @version 1.0.0
+ * @date 2025-06-09
+ * @license MIT
+ * @copyright © 2025 XPIPI. All rights reserved.
+ */
+
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { Permission } from '@/constants/permission'
